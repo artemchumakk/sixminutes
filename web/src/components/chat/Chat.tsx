@@ -42,18 +42,8 @@ export default function Chat({
   }, [ws.id, onRegisterAsk]);
 
   const [fireAudioPlaying, setFireAudioPlaying] = useState(false);
-  const handleVoiceUtterance = useCallback(async (blob: Blob) => {
-    // hands-free loop: we STAY in voice mode; the loop resumes listening after the answer
-    try {
-      const { text } = await transcribeVoice(blob);
-      if (text.trim()) fireRef.current?.ask(text, true);
-      else
-        fireRef.current?.note(
-          "🎙 I heard only silence — check which microphone Chrome is using (🎙 icon in the address bar)."
-        );
-    } catch {
-      fireRef.current?.note("🎙 Transcription failed — is the engine running on :8095?");
-    }
+  const handleVoiceText = useCallback((text: string) => {
+    fireRef.current?.ask(text, true); // already transcribed live; just ask
   }, []);
   const handleVoiceExit = useCallback(() => {
     fireRef.current?.stopAudio();
@@ -214,6 +204,18 @@ export default function Chat({
           onMessagesChange={setFireMsgs}
           onAudioStateChange={setFireAudioPlaying}
         />
+        {/* loading screen while the agent thinks/speaks in voice mode */}
+        {voiceActive && (fireBusy || fireAudioPlaying) && (
+          <div className="pointer-events-none absolute inset-0 z-[1080] flex items-center justify-center">
+            <div className="animate-fade-up flex flex-col items-center gap-3 rounded-2xl border border-neutral-200 bg-white/90 px-9 py-6 shadow-[0_8px_30px_rgba(0,0,0,0.12)] backdrop-blur-sm">
+              <div
+                className="h-9 w-9 animate-spin rounded-full border-[2.5px] border-neutral-200"
+                style={{ borderTopColor: ws.accent }}
+              />
+              <ThinkingStatus speaking={fireAudioPlaying} />
+            </div>
+          </div>
+        )}
         <div
           className={
             "pointer-events-none absolute bottom-4 left-0 z-[1100] px-4 transition-[right] duration-300 " +
@@ -222,11 +224,11 @@ export default function Chat({
         >
           <div className="pointer-events-auto mx-auto w-full max-w-3xl">
             {voiceActive ? (
-              <FireVoiceLoop
+              <FireLiveVoice
                 accent={ws.accent}
                 busy={fireBusy}
                 audioPlaying={fireAudioPlaying}
-                onUtterance={handleVoiceUtterance}
+                onSubmitText={handleVoiceText}
                 onExit={handleVoiceExit}
               />
             ) : (
@@ -280,122 +282,162 @@ export default function Chat({
   );
 }
 
-/** Hands-free conversational voice: VAD listens -> silence sends -> agent speaks ->
- *  listening resumes. Mic is deaf while the agent talks (no self-hearing).
- *  Wears ynkvch's RecordingBar while listening. ■ exits the loop. */
-type VoicePhase = "listening" | "thinking" | "speaking";
+function ThinkingStatus({ speaking }: { speaking: boolean }) {
+  const phrases = [
+    "Consulting the twin…",
+    "Re-running 132,860 incidents…",
+    "Weighing cover moves…",
+    "Reading the wards…",
+  ];
+  const [i, setI] = useState(0);
+  useEffect(() => {
+    const t = window.setInterval(() => setI((x) => x + 1), 1700);
+    return () => window.clearInterval(t);
+  }, []);
+  return (
+    <div className="text-[13px] text-neutral-500">
+      {speaking ? "Speaking…" : phrases[i % phrases.length]}
+    </div>
+  );
+}
 
-function FireVoiceLoop({
-  accent,
+/** Live-narration voice: transcribes WHILE you speak (chunked ElevenLabs every
+ *  ~1.3s), YOU press Enter to send. Esc or ■ exits. After the agent answers,
+ *  listening resumes automatically. No VAD, no surprises. */
+type VoicePhase = "live" | "thinking" | "speaking";
+
+function FireLiveVoice({
   busy,
   audioPlaying,
-  onUtterance,
+  onSubmitText,
   onExit,
 }: {
   accent: string;
   busy: boolean;
   audioPlaying: boolean;
-  onUtterance: (blob: Blob) => void;
+  onSubmitText: (text: string) => void;
   onExit: () => void;
 }) {
-  const [phase, setPhase] = useState<VoicePhase>("listening");
+  const [phase, setPhase] = useState<VoicePhase>("live");
+  const [caption, setCaption] = useState("");
   const [err, setErr] = useState(false);
-  const phaseRef = useRef<VoicePhase>("listening");
+  const phaseRef = useRef<VoicePhase>("live");
   phaseRef.current = phase;
   const streamRef = useRef<MediaStream | null>(null);
-  const ctxRef = useRef<AudioContext | null>(null);
-  const analyserRef = useRef<AnalyserNode | null>(null);
   const recRef = useRef<MediaRecorder | null>(null);
-  const meterRef = useRef<number | null>(null);
-  const utterRef = useRef(onUtterance);
-  utterRef.current = onUtterance;
+  const chunksRef = useRef<BlobPart[]>([]);
+  const inflightRef = useRef(false);
+  const lastLenRef = useRef(0);
+  const captionRef = useRef("");
+  const tickRef = useRef<number | null>(null);
+  const submitRef = useRef(onSubmitText);
+  submitRef.current = onSubmitText;
+  const exitRef = useRef(onExit);
+  exitRef.current = onExit;
 
-  const stopMeter = () => {
-    if (meterRef.current) window.clearInterval(meterRef.current);
-    meterRef.current = null;
+  const stopTick = () => {
+    if (tickRef.current) window.clearInterval(tickRef.current);
+    tickRef.current = null;
   };
 
-  const startListening = async () => {
+  const liveTranscribe = async () => {
+    if (inflightRef.current || chunksRef.current.length === lastLenRef.current) return;
+    inflightRef.current = true;
+    lastLenRef.current = chunksRef.current.length;
+    try {
+      const blob = new Blob(chunksRef.current, { type: recRef.current?.mimeType || "audio/webm" });
+      if (blob.size > 2000) {
+        const { text } = await transcribeVoice(blob);
+        if (phaseRef.current === "live" && text.trim()) {
+          captionRef.current = text;
+          setCaption(text);
+        }
+      }
+    } catch {
+      /* next tick retries */
+    } finally {
+      inflightRef.current = false;
+    }
+  };
+
+  const startLive = async () => {
     try {
       if (!streamRef.current) {
         streamRef.current = await navigator.mediaDevices.getUserMedia({
           audio: { echoCancellation: true, noiseSuppression: true },
         });
-        const Ctx = window.AudioContext ?? (window as unknown as { webkitAudioContext: typeof AudioContext }).webkitAudioContext;
-        ctxRef.current = new Ctx();
-        const src = ctxRef.current.createMediaStreamSource(streamRef.current);
-        analyserRef.current = ctxRef.current.createAnalyser();
-        analyserRef.current.fftSize = 1024;
-        src.connect(analyserRef.current);
       }
-      await ctxRef.current?.resume();
-      setPhase("listening");
-      const chunks: BlobPart[] = [];
+      chunksRef.current = [];
+      lastLenRef.current = 0;
+      captionRef.current = "";
+      setCaption("");
+      setPhase("live");
       const rec = new MediaRecorder(streamRef.current);
       recRef.current = rec;
       rec.ondataavailable = (e) => {
-        if (e.data.size) chunks.push(e.data);
+        if (e.data.size) chunksRef.current.push(e.data);
       };
-      rec.onstop = () => {
-        stopMeter();
-        const blob = new Blob(chunks, { type: rec.mimeType || "audio/webm" });
-        const spoke = (rec as MediaRecorder & { _spoke?: boolean })._spoke;
-        if (spoke && blob.size > 1500) {
-          setPhase("thinking");
-          utterRef.current(blob);
-        } else if (phaseRef.current === "listening") {
-          void startListening(); // heard nothing real -> keep listening
-        }
-      };
-      rec.start();
-
-      // --- VAD: longer calibration + SUSTAINED speech required (noise-proof) ---
-      const buf = new Uint8Array(analyserRef.current!.fftSize);
-      const t0 = performance.now();
-      let floor = 5;
-      let speech = false;
-      let loudStreak = 0;
-      let lastLoud = performance.now();
-      meterRef.current = window.setInterval(() => {
-        analyserRef.current!.getByteTimeDomainData(buf);
-        let sum = 0;
-        for (let i = 0; i < buf.length; i++) {
-          const d = buf[i] - 128;
-          sum += d * d;
-        }
-        const rms = Math.sqrt(sum / buf.length);
-        const now = performance.now();
-        if (now - t0 < 700) {
-          floor = Math.max(floor, rms * 1.25); // learn the room for 0.7s
-          return;
-        }
-        const thr = Math.max(11, floor * 3.2);
-        if (rms > thr) {
-          loudStreak += 1;
-          lastLoud = now;
-          if (loudStreak >= 4 && !speech) {
-            // ~360ms of sustained voice before we believe it's speech
-            speech = true;
-            (rec as MediaRecorder & { _spoke?: boolean })._spoke = true;
-          }
-        } else {
-          loudStreak = Math.max(0, loudStreak - 1);
-        }
-        const quietFor = now - lastLoud;
-        if ((speech && quietFor > 1200) || now - t0 > 25_000) {
-          if (rec.state === "recording") rec.stop();
-        }
-      }, 90);
+      rec.start(900); // chunk every 0.9s -> near-live captions
+      tickRef.current = window.setInterval(liveTranscribe, 1300);
     } catch {
       setErr(true);
     }
   };
 
-  // boot once; teardown on exit
+  const send = async () => {
+    if (phaseRef.current !== "live") return;
+    stopTick();
+    const rec = recRef.current;
+    setPhase("thinking");
+    const finalize = async () => {
+      try {
+        const blob = new Blob(chunksRef.current, { type: rec?.mimeType || "audio/webm" });
+        let text = captionRef.current;
+        if (blob.size > 2000) {
+          try {
+            const r = await transcribeVoice(blob); // one last full pass catches trailing words
+            if (r.text.trim()) text = r.text;
+          } catch {
+            /* fall back to live caption */
+          }
+        }
+        if (text.trim()) submitRef.current(text.trim());
+        else {
+          setPhase("live");
+          void startLive();
+        }
+      } catch {
+        setPhase("live");
+        void startLive();
+      }
+    };
+    if (rec && rec.state === "recording") {
+      rec.onstop = () => void finalize();
+      rec.stop();
+    } else void finalize();
+  };
+
+  // keyboard: Enter = send, Esc = exit
   useEffect(() => {
-    void startListening();
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key === "Enter" && phaseRef.current === "live") {
+        e.preventDefault();
+        void send();
+      } else if (e.key === "Escape") {
+        e.preventDefault();
+        exitRef.current();
+      }
+    };
+    window.addEventListener("keydown", onKey);
+    return () => window.removeEventListener("keydown", onKey);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
+  // boot + teardown
+  useEffect(() => {
+    void startLive();
     return () => {
-      stopMeter();
+      stopTick();
       try {
         if (recRef.current?.state === "recording") {
           recRef.current.onstop = null;
@@ -405,14 +447,13 @@ function FireVoiceLoop({
         /* already stopped */
       }
       streamRef.current?.getTracks().forEach((t) => t.stop());
-      void ctxRef.current?.close();
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
-  // after the agent finishes (no busy, no audio) -> resume listening
+  // resume listening once the agent has finished talking
   useEffect(() => {
-    if (phase === "listening") return;
+    if (phase === "live") return;
     if (audioPlaying) {
       setPhase("speaking");
       return;
@@ -422,8 +463,8 @@ function FireVoiceLoop({
       return;
     }
     const t = window.setTimeout(() => {
-      if (phaseRef.current !== "listening") void startListening();
-    }, 800);
+      if (phaseRef.current !== "live") void startLive();
+    }, 700);
     return () => window.clearTimeout(t);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [busy, audioPlaying, phase]);
@@ -439,22 +480,55 @@ function FireVoiceLoop({
     );
   }
 
-  if (phase === "listening") {
-    return <RecordingBar accent={accent} onStop={onExit} />;
-  }
   return (
-    <div className="flex items-center gap-3 rounded-[26px] border border-neutral-200 bg-white px-4 py-3 shadow-[0_1px_2px_rgba(0,0,0,0.04)]">
-      <div className="flex-1 text-[13.5px] text-neutral-500">
-        {phase === "speaking" ? "Speaking…" : "Thinking…"}
-        <span className="caret" />
+    <div className="rounded-[26px] border border-neutral-200/80 bg-neutral-100/70 p-1.5">
+      <div className="rounded-[20px] border border-neutral-200 bg-white shadow-[0_1px_2px_rgba(0,0,0,0.04)]">
+        <div className="min-h-[44px] px-4 pb-1 pt-3 text-[15px] leading-6 text-neutral-900">
+          {phase === "live" ? (
+            caption ? (
+              <span>
+                {caption}
+                <span className="caret" />
+              </span>
+            ) : (
+              <span className="text-neutral-400">
+                Listening — speak, then press <b>Enter ↵</b> to send
+                <span className="caret" />
+              </span>
+            )
+          ) : (
+            <span className="text-neutral-400">{phase === "speaking" ? "Speaking…" : "Thinking…"}</span>
+          )}
+        </div>
+        <div className="flex items-center justify-between px-2.5 pb-2.5 pt-1">
+          <div className="flex items-center gap-2 pl-1.5">
+            <span className="relative flex h-2.5 w-2.5">
+              <span
+                className={cx(
+                  "absolute inline-flex h-full w-full rounded-full opacity-60",
+                  phase === "live" ? "animate-ping bg-red-500" : "bg-neutral-300"
+                )}
+              />
+              <span
+                className={cx(
+                  "relative inline-flex h-2.5 w-2.5 rounded-full",
+                  phase === "live" ? "bg-red-500" : "bg-neutral-300"
+                )}
+              />
+            </span>
+            <span className="text-[12px] text-neutral-400">
+              {phase === "live" ? "recording · Enter ↵ send · Esc exit" : "mic paused"}
+            </span>
+          </div>
+          <button
+            onClick={onExit}
+            title="End voice (Esc)"
+            className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-neutral-900 text-white transition-colors hover:bg-neutral-700"
+          >
+            <span className="h-3 w-3 rounded-[3px] bg-white" />
+          </button>
+        </div>
       </div>
-      <button
-        onClick={onExit}
-        title="End voice"
-        className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-neutral-900 text-white transition-colors hover:bg-neutral-700"
-      >
-        <span className="h-3 w-3 rounded-[3px] bg-white" />
-      </button>
     </div>
   );
 }
