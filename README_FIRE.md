@@ -106,3 +106,38 @@ wet-weather mode → move-pump (keep closures only) → vector memory (registry 
 3. **Concurrency tax** (NEW, from tonight's sim): % of late arrivals caused by busy
    pumps, not distance — the number nobody has ever published.
 4. Cross-service: fire promise holds / ambulance C1 tail fails, same streets (needs ambulance tier).
+
+---
+
+## APPENDED — THE GHOST OPERATOR (fully agentic UI) · green-lit Sat 20:50
+
+**Goal:** type or say "show me X" → the dashboard operates itself like a ghost human:
+stations click red, RUN fires, camera pans to the wound, agent narrates (ElevenLabs).
+
+**Architecture:** the agent gets hands — a `ui` tool beside run_scenario/sql/recall.
+`POST /ask {text}` → Nemotron emits a CHOREOGRAPHY of fixed safe verbs
+(narrate, close_stations, open_2014, compare_postures, run_scenario, focus_ward,
+focus_station, show_finding, show_validation, show_metric, reset) → an append-only
+command bus (`GET /ui/commands?since=`) → the frontend executes each verb with
+~700ms theatrical pacing USING THE SAME JS FUNCTIONS A HUMAN CLICK CALLS.
+LLM directs the film; it does not get root on the DOM. Voice routes through the
+same pipe (--voice → same agent → wall animates while it speaks).
+
+**API additions:** /ask · /ui/commands · /ui/emit · Scenario gains `open:[...]` +
+`baseline:"current"|"pre2014"` (cached 112-station baseline for 2014-mode comparisons)
+· static mount for TTS audio · data/lsp5_coords.json (the ten 2014 stations, data-derived).
+
+**Frontend additions:** command bar ("ask the room") · command executor + narration
+ticker (typewriter + audio) · presets (Biggin Hill / strike day / 2014 actual /
+2014 naive / 2014 optimal) · 2014 Time-Machine mode with ghost stations · findings
+rail (−0.18 · 63/52 · 1.47× · Dagenham +47s) · ward polygons (fallback: centroids)
+· Duty Log panel tailing the patrol session · vendored Leaflet (WiFi-death-proof).
+
+**Patrol upgrades (fully agentic overnight):** investigate-on-anomaly (agent pulls
+ward context via sql, reasons, writes assessment) · autonomous counterfactuals on
+clusters (agent runs the simulator UNPROMPTED, records recommendation) · 07:00
+self-written morning briefing. Box session untouched tonight (keeps banking logs);
+smart patrol runs on the Mac overnight; box gets the new brain Sun 08:05.
+
+**The defense line:** deterministic core, agentic shell — no LLM in the physics;
+the agent decides what to investigate, simulate, show, and say.
