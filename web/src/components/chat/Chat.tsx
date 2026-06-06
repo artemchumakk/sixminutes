@@ -301,10 +301,54 @@ function ThinkingStatus({ speaking }: { speaking: boolean }) {
   );
 }
 
-/** Live-narration voice: transcribes WHILE you speak (chunked ElevenLabs every
- *  ~1.3s), YOU press Enter to send. Esc or ■ exits. After the agent answers,
- *  listening resumes automatically. No VAD, no surprises. */
+/** Live-narration voice: transcribes WHILE you speak, YOU press Enter to send.
+ *  Capture is raw PCM -> complete WAV per upload (MediaRecorder partials are NOT
+ *  valid files — ElevenLabs rejects them as corrupted; WAV never can be). */
 type VoicePhase = "live" | "thinking" | "speaking";
+
+const TARGET_RATE = 16_000;
+
+function buildWav(buffers: Float32Array[], srcRate: number): Blob {
+  let total = 0;
+  for (const b of buffers) total += b.length;
+  const joined = new Float32Array(total);
+  let off = 0;
+  for (const b of buffers) {
+    joined.set(b, off);
+    off += b.length;
+  }
+  // linear-interpolation downsample to 16 kHz mono
+  const ratio = srcRate / TARGET_RATE;
+  const outLen = Math.floor(joined.length / ratio);
+  const pcm = new Int16Array(outLen);
+  for (let i = 0; i < outLen; i++) {
+    const pos = i * ratio;
+    const i0 = Math.floor(pos);
+    const i1 = Math.min(joined.length - 1, i0 + 1);
+    const frac = pos - i0;
+    const s = joined[i0] * (1 - frac) + joined[i1] * frac;
+    pcm[i] = Math.max(-32768, Math.min(32767, Math.round(s * 32767)));
+  }
+  const header = new ArrayBuffer(44);
+  const v = new DataView(header);
+  const writeStr = (o: number, s: string) => {
+    for (let i = 0; i < s.length; i++) v.setUint8(o + i, s.charCodeAt(i));
+  };
+  writeStr(0, "RIFF");
+  v.setUint32(4, 36 + pcm.length * 2, true);
+  writeStr(8, "WAVE");
+  writeStr(12, "fmt ");
+  v.setUint32(16, 16, true);
+  v.setUint16(20, 1, true);          // PCM
+  v.setUint16(22, 1, true);          // mono
+  v.setUint32(24, TARGET_RATE, true);
+  v.setUint32(28, TARGET_RATE * 2, true);
+  v.setUint16(32, 2, true);
+  v.setUint16(34, 16, true);
+  writeStr(36, "data");
+  v.setUint32(40, pcm.length * 2, true);
+  return new Blob([header, pcm.buffer], { type: "audio/wav" });
+}
 
 function FireLiveVoice({
   busy,
@@ -324,10 +368,13 @@ function FireLiveVoice({
   const phaseRef = useRef<VoicePhase>("live");
   phaseRef.current = phase;
   const streamRef = useRef<MediaStream | null>(null);
-  const recRef = useRef<MediaRecorder | null>(null);
-  const chunksRef = useRef<BlobPart[]>([]);
+  const ctxRef = useRef<AudioContext | null>(null);
+  const procRef = useRef<ScriptProcessorNode | null>(null);
+  const samplesRef = useRef<Float32Array[]>([]);
+  const sampleCountRef = useRef(0);
+  const sentCountRef = useRef(0);
+  const rateRef = useRef(48_000);
   const inflightRef = useRef(false);
-  const lastLenRef = useRef(0);
   const captionRef = useRef("");
   const tickRef = useRef<number | null>(null);
   const submitRef = useRef(onSubmitText);
@@ -341,12 +388,13 @@ function FireLiveVoice({
   };
 
   const liveTranscribe = async () => {
-    if (inflightRef.current || chunksRef.current.length === lastLenRef.current) return;
+    // need ~0.6s of NEW audio before re-transcribing the take
+    if (inflightRef.current || sampleCountRef.current - sentCountRef.current < rateRef.current * 0.6) return;
     inflightRef.current = true;
-    lastLenRef.current = chunksRef.current.length;
+    sentCountRef.current = sampleCountRef.current;
     try {
-      const blob = new Blob(chunksRef.current, { type: recRef.current?.mimeType || "audio/webm" });
-      if (blob.size > 2000) {
+      if (sampleCountRef.current > rateRef.current * 0.5) {
+        const blob = buildWav(samplesRef.current, rateRef.current);
         const { text } = await transcribeVoice(blob);
         if (phaseRef.current === "live" && text.trim()) {
           captionRef.current = text;
@@ -362,22 +410,40 @@ function FireLiveVoice({
 
   const startLive = async () => {
     try {
-      if (!streamRef.current) {
-        streamRef.current = await navigator.mediaDevices.getUserMedia({
-          audio: { echoCancellation: true, noiseSuppression: true },
-        });
-      }
-      chunksRef.current = [];
-      lastLenRef.current = 0;
+      samplesRef.current = [];
+      sampleCountRef.current = 0;
+      sentCountRef.current = 0;
       captionRef.current = "";
       setCaption("");
-      setPhase("live");
-      const rec = new MediaRecorder(streamRef.current);
-      recRef.current = rec;
-      rec.ondataavailable = (e) => {
-        if (e.data.size) chunksRef.current.push(e.data);
+      streamRef.current = await navigator.mediaDevices.getUserMedia({
+        audio: { echoCancellation: true, noiseSuppression: true },
+      });
+      const Ctx =
+        window.AudioContext ??
+        (window as unknown as { webkitAudioContext: typeof AudioContext }).webkitAudioContext;
+      const ctx = new Ctx();
+      ctxRef.current = ctx;
+      rateRef.current = ctx.sampleRate;
+      await ctx.resume();
+      const src = ctx.createMediaStreamSource(streamRef.current);
+      const proc = ctx.createScriptProcessor(4096, 1, 1);
+      procRef.current = proc;
+      proc.onaudioprocess = (e) => {
+        const d = e.inputBuffer.getChannelData(0);
+        samplesRef.current.push(new Float32Array(d));
+        sampleCountRef.current += d.length;
+        // memory cap ~90s of take
+        if (sampleCountRef.current > rateRef.current * 90) {
+          const drop = samplesRef.current.shift();
+          if (drop) sampleCountRef.current -= drop.length;
+        }
       };
-      rec.start(900); // chunk every 0.9s -> near-live captions
+      const mute = ctx.createGain();
+      mute.gain.value = 0; // keeps the node pulling samples without feedback
+      src.connect(proc);
+      proc.connect(mute);
+      mute.connect(ctx.destination);
+      setPhase("live");
       tickRef.current = window.setInterval(liveTranscribe, 1300);
     } catch {
       setErr(true);
@@ -392,51 +458,44 @@ function FireLiveVoice({
   const releaseMic = () => {
     stopTick();
     try {
-      if (recRef.current?.state === "recording") {
-        recRef.current.onstop = null;
-        recRef.current.stop();
-      }
+      procRef.current?.disconnect();
     } catch {
-      /* already stopped */
+      /* already disconnected */
     }
+    procRef.current = null;
     // HARD off: release the stream so the browser's recording indicator dies too
     streamRef.current?.getTracks().forEach((t) => t.stop());
     streamRef.current = null;
-    recRef.current = null;
+    void ctxRef.current?.close().catch(() => undefined);
+    ctxRef.current = null;
   };
 
   const send = async () => {
     if (phaseRef.current !== "live") return;
-    stopTick();
     sawAudioRef.current = false; // fresh turn: we don't yet know if audio is coming
     busySeenRef.current = false; // ...nor has the ask registered yet
-    const rec = recRef.current;
     setPhase("thinking");
-    const finalize = async () => {
-      const blob = new Blob(chunksRef.current, { type: rec?.mimeType || "audio/webm" });
-      // mic is DEAD from this point until the agent has fully answered
-      streamRef.current?.getTracks().forEach((t) => t.stop());
-      streamRef.current = null;
-      recRef.current = null;
-      let text = captionRef.current;
-      if (blob.size > 2000) {
-        try {
-          const r = await transcribeVoice(blob); // one last full pass catches trailing words
-          if (r.text.trim()) text = r.text;
-        } catch {
-          /* fall back to live caption */
-        }
+    const rate = rateRef.current;
+    const takeSamples = samplesRef.current;
+    const takeCount = sampleCountRef.current;
+    releaseMic(); // mic is DEAD from this point until the agent has fully answered
+    let text = captionRef.current;
+    if (takeCount > rate * 0.4) {
+      try {
+        const blob = buildWav(takeSamples, rate); // complete valid WAV, always
+        const r = await transcribeVoice(blob);
+        if (r.text.trim()) text = r.text;
+      } catch {
+        /* fall back to live caption */
       }
-      if (text.trim()) submitRef.current(text.trim());
-      else {
-        setPhase("live");
-        void startLive();
-      }
-    };
-    if (rec && rec.state === "recording") {
-      rec.onstop = () => void finalize();
-      rec.stop();
-    } else void finalize();
+    }
+    samplesRef.current = [];
+    sampleCountRef.current = 0;
+    if (text.trim()) submitRef.current(text.trim());
+    else {
+      setPhase("live");
+      void startLive();
+    }
   };
 
   // keyboard: Enter = send, Esc = exit
@@ -458,18 +517,7 @@ function FireLiveVoice({
   // boot + teardown
   useEffect(() => {
     void startLive();
-    return () => {
-      stopTick();
-      try {
-        if (recRef.current?.state === "recording") {
-          recRef.current.onstop = null;
-          recRef.current.stop();
-        }
-      } catch {
-        /* already stopped */
-      }
-      streamRef.current?.getTracks().forEach((t) => t.stop());
-    };
+    return () => releaseMic();
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
