@@ -1,0 +1,172 @@
+import { useEffect, useRef, useState } from "react";
+import type { ChatMessage, Workspace } from "../../lib/types";
+import { agentReply, SUGGESTIONS } from "../../lib/mock";
+import { cx } from "../ui/primitives";
+import Composer from "./Composer";
+import ResultCard from "./ResultCard";
+import { RecordingBar, SpeakingOrb } from "./VoiceMode";
+
+let idc = 0;
+const nid = () => `m${++idc}`;
+
+export default function Chat({
+  ws,
+  voiceActive,
+  onToggleVoice,
+}: {
+  ws: Workspace;
+  voiceActive: boolean;
+  onToggleVoice: () => void;
+}) {
+  const [messages, setMessages] = useState<ChatMessage[]>([]);
+  const [input, setInput] = useState("");
+  const [busy, setBusy] = useState(false);
+  const [folders, setFolders] = useState<string[]>(["London Bridge Hospital"]);
+  const [activeFolder, setActiveFolder] = useState("London Bridge Hospital");
+  const scrollRef = useRef<HTMLDivElement>(null);
+
+  function addFolder() {
+    const name = `New workspace ${folders.length}`;
+    setFolders((f) => [...f, name]);
+    setActiveFolder(name);
+  }
+
+  useEffect(() => {
+    scrollRef.current?.scrollTo({ top: scrollRef.current.scrollHeight, behavior: "smooth" });
+  }, [messages]);
+
+  function send(text: string) {
+    if (!text.trim() || busy) return;
+    setInput("");
+    setBusy(true);
+    const userMsg: ChatMessage = { id: nid(), role: "user", text };
+    const agentMsg: ChatMessage = { id: nid(), role: "agent", text: "", pending: true };
+    setMessages((m) => [...m, userMsg, agentMsg]);
+
+    const { text: replyText, result } = agentReply(text);
+    window.setTimeout(() => {
+      let i = 0;
+      const timer = window.setInterval(() => {
+        i += 2;
+        setMessages((m) =>
+          m.map((msg) => (msg.id === agentMsg.id ? { ...msg, text: replyText.slice(0, i) } : msg))
+        );
+        if (i >= replyText.length) {
+          window.clearInterval(timer);
+          setMessages((m) =>
+            m.map((msg) =>
+              msg.id === agentMsg.id ? { ...msg, text: replyText, result, pending: false } : msg
+            )
+          );
+          setBusy(false);
+        }
+      }, 12);
+    }, 600);
+  }
+
+  const composer = (
+    <Composer
+      value={input}
+      onChange={setInput}
+      onSubmit={() => send(input)}
+      ws={ws}
+      onToggleVoice={onToggleVoice}
+      voiceActive={voiceActive}
+      busy={busy}
+      autoFocus
+      folders={folders}
+      activeFolder={activeFolder}
+      onSelectFolder={setActiveFolder}
+      onAddFolder={addFolder}
+    />
+  );
+
+  // ---- voice mode (PREVIEW for ElevenLabs) ----
+  if (voiceActive) {
+    return (
+      <div className="flex h-full flex-col">
+        <div className="flex flex-1 items-center justify-center px-4">
+          <SpeakingOrb accent={ws.accent} />
+        </div>
+        <div className="px-4 pb-4">
+          <div className="mx-auto w-full max-w-3xl">
+            <RecordingBar accent={ws.accent} onStop={onToggleVoice} />
+          </div>
+        </div>
+      </div>
+    );
+  }
+
+  const empty = messages.length === 0;
+
+  return (
+    <div className="flex h-full flex-col">
+      {/* content area */}
+      <div ref={scrollRef} className="flex-1 overflow-y-auto">
+        {empty ? (
+          <div className="flex h-full items-center justify-center px-4">
+            <div className="w-full max-w-3xl">
+              <h1 className="mb-7 text-center text-[30px] font-medium tracking-tight text-neutral-900">
+                What should we simulate in {ws.short}?
+              </h1>
+              <div className="flex flex-wrap justify-center gap-2">
+                {SUGGESTIONS.map((s) => (
+                  <button
+                    key={s}
+                    onClick={() => send(s)}
+                    className="rounded-full border border-neutral-200 bg-white px-4 py-2.5 text-[13.5px] text-neutral-700 transition-all duration-200 hover:border-neutral-300 hover:bg-neutral-50 hover:text-neutral-900 hover:shadow-[0_2px_8px_rgba(0,0,0,0.05)]"
+                  >
+                    {s}
+                  </button>
+                ))}
+              </div>
+            </div>
+          </div>
+        ) : (
+          <div className="mx-auto flex w-full max-w-3xl flex-col gap-7 px-4 py-8">
+            {messages.map((m) => (
+              <Bubble key={m.id} msg={m} ws={ws} />
+            ))}
+          </div>
+        )}
+      </div>
+
+      {/* composer pinned to bottom */}
+      <div className="px-4 pb-4">
+        <div className="mx-auto w-full max-w-3xl">{composer}</div>
+      </div>
+    </div>
+  );
+}
+
+function Bubble({ msg, ws }: { msg: ChatMessage; ws: Workspace }) {
+  if (msg.role === "user") {
+    return (
+      <div className="flex animate-fade-up justify-end">
+        <div className="max-w-[80%] rounded-3xl rounded-br-lg bg-neutral-100 px-4 py-2.5 text-[15px] leading-6 text-neutral-900">
+          {msg.text}
+        </div>
+      </div>
+    );
+  }
+  return (
+    <div className="flex animate-fade-up gap-3">
+      <div
+        className="mt-0.5 flex h-7 w-7 shrink-0 items-center justify-center rounded-full border border-neutral-200 text-[13px]"
+        style={{ color: ws.accent }}
+      >
+        ✦
+      </div>
+      <div className="min-w-0 flex-1 pt-0.5">
+        <div className="text-[15px] leading-7 text-neutral-800">
+          {msg.pending && msg.text === "" ? (
+            <span className="text-neutral-400">Thinking…</span>
+          ) : (
+            <span className={cx(msg.pending && "caret")}>{msg.text}</span>
+          )}
+        </div>
+        {msg.result && <ResultCard r={msg.result} />}
+      </div>
+    </div>
+  );
+}
