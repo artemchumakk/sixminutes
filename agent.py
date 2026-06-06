@@ -138,6 +138,7 @@ def tool_recommend_cover(stripped: list[str], hours: list[int] | None = None) ->
 
 
 SPEAK_NARRATION = True
+SHOULD_STOP = None  # optional callable set by the API: True = user hit STOP mid-choreography
 UI_VERBS = {"narrate", "reset", "close_stations", "open_2014", "run_scenario",
             "compare_postures", "focus_ward", "focus_station", "show_finding",
             "show_validation", "show_metric"}
@@ -261,6 +262,9 @@ def agent_turn(user_text: str, history: list[dict]) -> str:
     bad = 0
     last_narration = ""
     for _hop in range(24):  # generous: choreographies can be long even when batched
+        if SHOULD_STOP and SHOULD_STOP():
+            jlog("agent", text="(stopped by user)", note="user_stop")
+            return last_narration or "Stopped."
         raw = llm(msgs)
         obj = extract_json(raw) if raw else None
         if obj is None:

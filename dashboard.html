@@ -73,7 +73,7 @@
   #tdot { width:9px; height:9px; border-radius:50%; background:#333; flex:none; }
   #tdot.live { background:var(--amber); animation:pulse 1s infinite; }
   @keyframes pulse { 50% { opacity:.3; } }
-  #ttext { font-size:13.5px; color:var(--txt); }
+  #ttext { font-size:13.5px; color:var(--txt); max-height:60px; overflow-y:auto; word-break:break-word; flex:1; }
   #dutylog { font-size:10.5px; color:var(--dim); max-height:110px; overflow-y:auto; }
   #dutylog div { padding:1px 0; border-bottom:1px dotted #1a2230; }
   .leaflet-container { background:#0a0d12; }
@@ -198,7 +198,8 @@ function toggle2014(){
   mode2014=!mode2014;
   const b=document.getElementById("mode2014");
   b.classList.toggle("on",mode2014);
-  b.textContent = mode2014 ? "⬡ PRE-2014 LONDON ACTIVE — 112 stations" : "⬡ ENTER PRE-2014 LONDON (112 stations)";
+  b.style.display = mode2014 ? "block" : "none";   // visible indicator + exit while active
+  b.textContent = mode2014 ? "⬡ PRE-2014 LONDON ACTIVE — click to return to today" : "⬡ PRE-2014 LONDON";
   Object.values(ghosts).forEach(g=> mode2014 ? g.addTo(map) : g.remove());
   paint();
 }
@@ -247,6 +248,8 @@ function renderResult(res, dt){
 
 // ---------- compare (2014 three-way) ----------
 async function comparePostures(keys){
+  if(!Object.keys(presetDefs).length){ narrate("Comparison definitions not loaded — refresh the page."); return; }
+  keys=(keys||[]).filter(k=>presetDefs[k]); if(!keys.length) return;
   document.getElementById("comparecard").style.display="block";
   const wrap=document.getElementById("compare"); wrap.innerHTML="";
   const names={lsp5_actual:"POLITICIANS",lsp5_naive:"NAIVE RANK",lsp5_optimal:"TWIN OPTIMAL"};
@@ -282,12 +285,19 @@ setInterval(async ()=>{
       cursor=d.next; return;
     }
     const d=await fetch(API+`/ui/commands?since=${cursor}`).then(r=>r.json());
-    cursor=d.next; queue.push(...d.commands);
+    cursor=d.next;
+    if(Date.now()<discardUntil){ if(d.commands.length) discardUntil=Date.now()+4000; }
+    else queue.push(...d.commands);
   }catch(e){}
 },600);
-function stopShow(){ queue.length=0; executing=false;
+let discardUntil=0;
+function stopShow(){
+  queue.length=0; executing=false;
+  discardUntil=Date.now()+20000;                       // drop stragglers while backend winds down
+  fetch(API+"/ask/stop",{method:"POST"}).catch(()=>{}); // cancel the agent at its next hop
   const v=document.getElementById("voice"); v.pause(); v.src="";
-  narrate("Stopped."); }
+  narrate("Stopped.");
+}
 setInterval(async ()=>{
   if(executing||!queue.length) return;
   executing=true;

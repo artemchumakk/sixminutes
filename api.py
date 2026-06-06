@@ -268,16 +268,35 @@ def ui_commands(since: int = 0) -> dict:
     return {"next": len(UI_COMMANDS), "commands": UI_COMMANDS[max(0, since):]}
 
 
+ALLOWED_CMDS = {"narrate", "reset", "close_stations", "open_2014", "run_scenario",
+                "compare_postures", "focus_ward", "focus_station", "show_finding",
+                "show_validation", "show_metric", "audio"}
+STOP_FLAG = threading.Event()
+
+
 @app.post("/ui/emit")
 def ui_emit(cmd: dict) -> dict:
+    if cmd.get("type") not in ALLOWED_CMDS:
+        raise HTTPException(400, f"unknown command type; allowed: {sorted(ALLOWED_CMDS)}")
+    if len(UI_COMMANDS) > 5000:
+        raise HTTPException(429, "command bus full")
+    if "text" in cmd:
+        cmd["text"] = str(cmd["text"])[:600]
     cmd["id"] = len(UI_COMMANDS)
     cmd["ts"] = time.time()
     UI_COMMANDS.append(cmd)
     return {"ok": True, "id": cmd["id"]}
 
 
+@app.post("/ask/stop")
+def ask_stop() -> dict:
+    """STOP button: cancel the in-flight choreography at the next agent hop."""
+    STOP_FLAG.set()
+    return {"ok": True}
+
+
 class Ask(BaseModel):
-    text: str
+    text: str = Field(max_length=2000)
     speak: bool = True
 
 
@@ -288,7 +307,10 @@ def ask(a: Ask) -> dict:
         raise HTTPException(429, "agent is mid-choreography; wait for it to finish")
     try:
         import agent as brigade
+        STOP_FLAG.clear()
+        brigade.SHOULD_STOP = STOP_FLAG.is_set
         brigade.SPEAK_NARRATION = a.speak
+        del ASK_HISTORY[:-8]   # keep short memory; old choreographies must not contaminate new asks
         answer = brigade.agent_turn(a.text, ASK_HISTORY)
         # ensure the final answer always lands on screen even if the model forgot ui.narrate
         if not any(c.get("type") == "narrate" and c.get("final") for c in UI_COMMANDS[-8:]):
