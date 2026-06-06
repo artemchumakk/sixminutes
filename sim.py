@@ -155,17 +155,28 @@ class World:
         print(f"[world] {n:,} incidents · {n_st} stations · {int(self.pumps.sum())} pumps "
               f"· loaded in {time.time()-t0:.1f}s")
 
-    # ---- sampling helpers -------------------------------------------------
-    def sample_turnout(self, st_i: int, hour: int, rng: np.random.Generator) -> float:
+    # ---- common-random-number sampling ------------------------------------
+    # Draws are a pure function of (incident, station, salt, seed): closing a
+    # station leaves every other draw bit-identical, so counterfactual deltas
+    # are pure signal (any distant nonzero delta = a REAL queueing knock-on).
+    @staticmethod
+    def u01(a: int, b: int, salt: int, seed: int) -> float:
+        x = (a * 0x9E3779B1 ^ b * 0x85EBCA77 ^ salt * 0xC2B2AE3D ^ seed * 0x27D4EB2F) & 0xFFFFFFFF
+        x ^= x >> 16; x = (x * 0x7FEB352D) & 0xFFFFFFFF
+        x ^= x >> 15; x = (x * 0x846CA68B) & 0xFFFFFFFF
+        x ^= x >> 16
+        return x / 4294967296.0
+
+    def sample_turnout(self, st_i: int, hour: int, gi: int, seed: int) -> float:
         pool = self.turnout.get((st_i, hour // 6))
         if pool is None or len(pool) < 30:
             pool = self._turnout_global
-        return float(pool[rng.integers(len(pool))])
+        return float(pool[int(self.u01(gi, st_i, 1, seed) * len(pool))])
 
-    def sample_residual(self, dist: float, rng: np.random.Generator) -> float:
+    def sample_residual(self, dist: float, st_i: int, gi: int, seed: int) -> float:
         b = int(np.searchsorted(self.res_edges[1:-1], dist))
         pool = self.res_pools[b]
-        return float(pool[rng.integers(len(pool))])
+        return float(pool[int(self.u01(gi, st_i, 2, seed) * len(pool))])
 
 
 def simulate(w: World, posture: Posture, year: int | None = None,
@@ -220,11 +231,11 @@ def simulate(w: World, posture: Posture, year: int | None = None,
                 base = w.M[gi, j]
                 if base > 8e8:
                     continue
-                if attempt == 0 and p_unavail > 0.0 and rng.random() < p_unavail:
+                if attempt == 0 and p_unavail > 0.0 and w.u01(gi, int(j), 3, seed) < p_unavail:
                     continue  # candidate out: training / standby move / out-positioned
                 wait = max(0.0, free[j][0] - t)
-                turnout = w.sample_turnout(int(j), int(hours[k]), rng)
-                travel = max(30.0, float(base) + w.sample_residual(float(base), rng))
+                turnout = w.sample_turnout(int(j), int(hours[k]), int(gi), seed)
+                travel = max(30.0, float(base) + w.sample_residual(float(base), int(j), int(gi), seed))
                 att = wait + turnout + travel
                 if att < best_att:
                     best_att, best_j, best_wait = att, int(j), wait
