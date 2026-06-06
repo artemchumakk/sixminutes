@@ -4,157 +4,338 @@
 <meta charset="utf-8"/>
 <title>SIXMINUTES — London Blue-Light Twin</title>
 <meta name="viewport" content="width=device-width, initial-scale=1"/>
-<link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"/>
-<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+<link rel="stylesheet" href="/vendor/leaflet.css"/>
+<script src="/vendor/leaflet.js"></script>
 <style>
-  :root { --bg:#0b0e13; --panel:#11161f; --line:#1f2733; --txt:#dbe4f0; --dim:#7d8aa0;
-          --red:#ff4d4d; --amber:#ffb84d; --green:#62d96b; --blue:#4dc3ff; }
+  :root { --bg:#0a0d12; --panel:#10151d; --line:#1e2733; --txt:#dde6f2; --dim:#7b8aa1;
+          --red:#ff4545; --amber:#ffb648; --green:#5fdb6a; --blue:#46c2ff; --ghost:#9d7bff; }
   * { box-sizing:border-box; margin:0; }
-  body { background:var(--bg); color:var(--txt); font:14px/1.45 "SF Mono", ui-monospace, Menlo, monospace; height:100vh; display:flex; flex-direction:column; }
-  header { padding:10px 16px; border-bottom:1px solid var(--line); display:flex; gap:14px; align-items:baseline; }
-  header h1 { font-size:18px; letter-spacing:2px; }
-  header .promise { color:var(--dim); font-size:12px; }
-  .badge { font-size:10px; padding:2px 7px; border-radius:9px; border:1px solid var(--line); color:var(--dim); }
-  .badge.a { color:var(--green); border-color:var(--green); }
+  body { background:var(--bg); color:var(--txt); font:14px/1.45 ui-monospace, "SF Mono", Menlo, monospace;
+         height:100vh; display:flex; flex-direction:column; overflow:hidden; }
+  header { padding:8px 14px; border-bottom:1px solid var(--line); display:flex; gap:12px; align-items:center; }
+  header h1 { font-size:17px; letter-spacing:3px; }
+  .strip { color:var(--dim); font-size:11px; }
+  .strip b { color:var(--green); }
+  .chip { font-size:10px; padding:2px 8px; border-radius:9px; border:1px solid var(--line); color:var(--dim); white-space:nowrap; }
+  .chip.a { color:var(--green); border-color:#2c5; } .chip.spark { color:#76b900; border-color:#76b900; }
+  .chip.duty { color:var(--amber); border-color:var(--amber); }
+  /* command bar */
+  #askwrap { padding:8px 14px; border-bottom:1px solid var(--line); display:flex; gap:8px; background:var(--panel); }
+  #ask { flex:1; background:var(--bg); border:1px solid var(--line); border-radius:8px; color:var(--txt);
+         font:inherit; padding:9px 12px; outline:none; }
+  #ask:focus { border-color:var(--blue); }
+  #ask::placeholder { color:#54627a; }
+  #askbtn { padding:9px 18px; background:var(--blue); color:#06121c; border:0; border-radius:8px;
+            font:inherit; font-weight:700; cursor:pointer; }
+  #askbtn:disabled { opacity:.4; cursor:wait; }
   main { flex:1; display:flex; min-height:0; }
+  /* findings rail */
+  #rail { width:230px; border-right:1px solid var(--line); background:var(--panel); padding:10px; overflow-y:auto; }
+  .fcard { background:var(--bg); border:1px solid var(--line); border-radius:8px; padding:9px; margin-bottom:8px; cursor:pointer;
+           transition: border-color .3s, box-shadow .3s; }
+  .fcard:hover { border-color:var(--dim); }
+  .fcard.glow { border-color:var(--amber); box-shadow:0 0 18px #ffb64833; }
+  .fcard .num { font-size:23px; font-weight:700; color:var(--amber); }
+  .fcard .t { font-size:11.5px; margin:3px 0; }
+  .fcard .l { font-size:10.5px; color:var(--dim); }
   #map { flex:1; }
-  aside { width:360px; border-left:1px solid var(--line); background:var(--panel); padding:14px; overflow-y:auto; display:flex; flex-direction:column; gap:12px; }
-  h2 { font-size:11px; letter-spacing:1.5px; color:var(--dim); text-transform:uppercase; margin-bottom:6px; }
-  .card { background:var(--bg); border:1px solid var(--line); border-radius:8px; padding:10px; }
-  .chips { display:flex; flex-wrap:wrap; gap:6px; min-height:26px; }
-  .chip { background:#2a1216; border:1px solid var(--red); color:var(--red); border-radius:12px; padding:2px 10px; cursor:pointer; font-size:12px; }
-  button#run { width:100%; padding:10px; background:var(--red); border:0; border-radius:8px; color:#fff; font:inherit; font-weight:700; letter-spacing:1px; cursor:pointer; }
+  aside { width:330px; border-left:1px solid var(--line); background:var(--panel); padding:10px; overflow-y:auto;
+          display:flex; flex-direction:column; gap:10px; }
+  h2 { font-size:10.5px; letter-spacing:1.5px; color:var(--dim); text-transform:uppercase; margin-bottom:5px; }
+  .card { background:var(--bg); border:1px solid var(--line); border-radius:8px; padding:9px; }
+  select { width:100%; background:var(--bg); color:var(--txt); border:1px solid var(--line); border-radius:6px;
+           font:inherit; padding:6px; }
+  .chips { display:flex; flex-wrap:wrap; gap:5px; min-height:24px; margin-top:6px; }
+  .sc { background:#2a1216; border:1px solid var(--red); color:var(--red); border-radius:11px; padding:1px 9px; cursor:pointer; font-size:11.5px; }
+  #mode2014 { margin-top:7px; width:100%; padding:7px; background:transparent; border:1px dashed var(--ghost); color:var(--ghost);
+              border-radius:8px; font:inherit; cursor:pointer; }
+  #mode2014.on { background:#1c1430; border-style:solid; }
+  button#run { width:100%; padding:11px; margin-top:7px; background:var(--red); border:0; border-radius:8px; color:#fff;
+               font:inherit; font-weight:700; letter-spacing:1px; cursor:pointer; transition: transform .1s; }
+  button#run.flash { transform:scale(.96); filter:brightness(1.4); }
   button#run:disabled { opacity:.45; cursor:wait; }
-  .stat { display:flex; justify-content:space-between; padding:3px 0; border-bottom:1px dashed var(--line); }
-  .stat b { color:var(--amber); }
-  .ward { display:flex; justify-content:space-between; font-size:12.5px; padding:2px 0; }
+  .stat { display:flex; justify-content:space-between; padding:3px 0; border-bottom:1px dashed var(--line); font-size:12.5px; }
+  .stat b { color:var(--amber); font-size:15px; }
+  .stat b.big { font-size:22px; color:var(--red); }
+  #stopwatch { text-align:center; color:var(--dim); font-size:11px; padding-top:5px; }
+  #stopwatch b { color:var(--green); font-size:13px; }
+  .ward { display:flex; justify-content:space-between; font-size:11.5px; padding:2px 0; }
   .ward b { color:var(--red); }
-  .hint { color:var(--dim); font-size:12px; }
-  #validation { font-size:11.5px; white-space:pre-wrap; color:var(--dim); }
-  .leaflet-container { background:#0b0e13; }
+  /* compare strip */
+  #compare { display:none; gap:6px; }
+  .cmp { flex:1; background:var(--bg); border:1px solid var(--line); border-radius:8px; padding:7px; text-align:center; }
+  .cmp .v { font-size:19px; font-weight:700; color:var(--red); }
+  .cmp.win { border-color:var(--green); } .cmp.win .v { color:var(--green); }
+  .cmp .k { font-size:9.5px; color:var(--dim); }
+  /* narration ticker */
+  #ticker { border-top:1px solid var(--line); background:var(--panel); padding:8px 14px; min-height:38px;
+            display:flex; align-items:center; gap:10px; }
+  #tdot { width:9px; height:9px; border-radius:50%; background:#333; flex:none; }
+  #tdot.live { background:var(--amber); animation:pulse 1s infinite; }
+  @keyframes pulse { 50% { opacity:.3; } }
+  #ttext { font-size:13.5px; color:var(--txt); }
+  #dutylog { font-size:10.5px; color:var(--dim); max-height:110px; overflow-y:auto; }
+  #dutylog div { padding:1px 0; border-bottom:1px dotted #1a2230; }
+  .leaflet-container { background:#0a0d12; }
+  .stn-tip { font-family:ui-monospace, monospace; font-size:11px; }
 </style>
 </head>
 <body>
 <header>
   <h1>SIXMINUTES</h1>
-  <span class="promise">London promises a fire engine in 6 minutes. This is where that promise lives.</span>
+  <span class="strip">validated blind on 2025: <b>+2.4% mean · −3.7% p90</b> · physics from 600k legs</span>
   <span style="flex:1"></span>
-  <span class="badge a">FIRE · TIER A (validated ±5%)</span>
-  <span class="badge">POLICE · TIER B</span>
-  <span class="badge">AMBULANCE · TIER B−</span>
+  <span class="chip duty" id="dutychip">BRIGADE WATCH · connecting…</span>
+  <span class="chip spark">DGX SPARK GB10 · NEMOTRON · trained 1.8s</span>
+  <span class="chip a">FIRE A</span><span class="chip">POLICE B</span><span class="chip">AMB B−</span>
 </header>
+
+<div id="askwrap">
+  <input id="ask" placeholder='ask the room — try: "show me what happens if Biggin Hill closes" or "show me the 2014 mistake"'/>
+  <button id="askbtn" onclick="askAgent()">ASK</button>
+</div>
+
 <main>
+  <div id="rail"></div>
   <div id="map"></div>
   <aside>
     <div class="card">
-      <h2>Scenario — click stations to close</h2>
-      <div class="chips" id="chips"><span class="hint">no stations selected</span></div>
-      <div style="height:8px"></div>
+      <h2>Posture</h2>
+      <select id="presets" onchange="applyPreset(this.value)"><option value="">— presets —</option></select>
+      <button id="mode2014" onclick="toggle2014()">⬡ ENTER PRE-2014 LONDON (112 stations)</button>
+      <div class="chips" id="chips"><span class="strip">click stations to close them</span></div>
       <button id="run" onclick="runScenario()">RUN COUNTERFACTUAL</button>
+      <div id="stopwatch"></div>
     </div>
     <div class="card" id="result" style="display:none">
-      <h2>Impact <span id="elapsed" style="text-transform:none"></span></h2>
+      <h2>Impact</h2>
       <div class="stat"><span>city mean</span><b id="r-mean">—</b></div>
       <div class="stat"><span>city p90</span><b id="r-p90">—</b></div>
-      <div class="stat"><span>incidents pushed past 6 min / yr</span><b id="r-pushed">—</b></div>
-      <div style="height:8px"></div>
+      <div class="stat"><span>pushed past 6-min promise /yr</span><b class="big" id="r-pushed">—</b></div>
+      <div style="height:6px"></div>
       <h2>Worst wards</h2>
       <div id="r-wards"></div>
     </div>
-    <div class="card">
-      <h2>Simulator trust</h2>
-      <div id="validation">loading…</div>
+    <div class="card" id="comparecard" style="display:none">
+      <h2>2014 — three tens, same savings</h2>
+      <div id="compare" style="display:flex"></div>
     </div>
     <div class="card">
-      <h2>Engine</h2>
-      <div class="stat"><span>replay year</span><b>2025 (real incidents)</b></div>
-      <div class="stat"><span>throughput</span><b id="thru">—</b></div>
-      <div class="stat"><span>physics</span><b>learned from 600k legs</b></div>
-      <div class="stat"><span>brain</span><b>Nemotron (local/Nebius)</b></div>
+      <h2>Brigade Watch — duty log</h2>
+      <div id="dutylog">…</div>
     </div>
   </aside>
 </main>
+
+<div id="ticker"><div id="tdot"></div><div id="ttext">Brigade Watch standing by. Ask the room anything.</div></div>
+<audio id="voice"></audio>
+
 <script>
-const API = location.origin.includes("file") ? "http://localhost:8095" : location.origin;
-const map = L.map("map", { zoomControl:false }).setView([51.495, -0.1], 11);
+const API = location.origin;
+const map = L.map("map", { zoomControl:false }).setView([51.495, -0.09], 11);
 L.tileLayer("https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png",
   { attribution:"© OSM © CARTO", maxZoom:18 }).addTo(map);
 
+// ---------- state ----------
 const closed = new Set();
-let stationLayer = {}, wardLayer = {}, wardIndex = {};
+let mode2014 = false, stations = {}, ghosts = {}, wardPolys = {}, wardCentroids = {}, presetDefs = {};
+const norm = s => (s||"").toUpperCase().replace(/&/g,"AND").replace(/[.'’]/g,"").replace(/\s+/g," ").trim();
 
-function chips() {
-  const el = document.getElementById("chips");
-  el.innerHTML = closed.size ? "" : '<span class="hint">no stations selected</span>';
-  closed.forEach(n => {
-    const c = document.createElement("span");
-    c.className = "chip"; c.textContent = n + " ✕";
-    c.onclick = () => { closed.delete(n); paintStations(); chips(); };
-    el.appendChild(c);
+// ---------- stations ----------
+fetch(API+"/stations").then(r=>r.json()).then(st=>{
+  st.forEach(s=>{
+    const m = L.circleMarker([s.lat,s.lon],{radius:4+1.7*s.pumps,weight:1.5,color:"#46c2ff",fillColor:"#46c2ff",fillOpacity:.55}).addTo(map);
+    m.bindTooltip(`${s.name} · ${s.pumps} pump${s.pumps>1?"s":""}`,{className:"stn-tip"});
+    m.on("click",()=>{ closed.has(s.name)?closed.delete(s.name):closed.add(s.name); paint(); });
+    stations[s.name]=m;
   });
-}
-
-function paintStations() {
-  Object.entries(stationLayer).forEach(([n, m]) =>
-    m.setStyle({ color: closed.has(n) ? "#ff4d4d" : "#4dc3ff",
-                 fillColor: closed.has(n) ? "#ff4d4d" : "#4dc3ff" }));
-}
-
-fetch(API + "/stations").then(r => r.json()).then(st => {
-  st.forEach(s => {
-    const m = L.circleMarker([s.lat, s.lon], { radius: 4 + 2*s.pumps, weight:1.5,
-      color:"#4dc3ff", fillColor:"#4dc3ff", fillOpacity:.55 }).addTo(map);
-    m.bindTooltip(`${s.name} · ${s.pumps} pump${s.pumps>1?"s":""}`);
-    m.on("click", () => { closed.has(s.name) ? closed.delete(s.name) : closed.add(s.name);
-                          paintStations(); chips(); });
-    stationLayer[s.name] = m;
+});
+fetch(API+"/stations2014").then(r=>r.json()).then(st=>{
+  st.forEach(s=>{
+    const m = L.circleMarker([s.lat,s.lon],{radius:7,weight:2,dashArray:"3,3",color:"#9d7bff",fillColor:"#9d7bff",fillOpacity:0});
+    m.bindTooltip(`${s.name} · closed Jan 2014`,{className:"stn-tip"});
+    m.on("click",()=>{ if(!mode2014) return; closed.has(s.name)?closed.delete(s.name):closed.add(s.name); paint(); });
+    ghosts[s.name]=m;
   });
 });
 
-fetch(API + "/wards").then(r => r.json()).then(ws => {
-  ws.forEach(w => {
-    const m = L.circleMarker([w.lat, w.lon], { radius:0, weight:0, fillOpacity:0 }).addTo(map);
-    wardLayer[w.ward + "|" + w.borough] = m;
-    wardIndex[w.ward] = m;
-  });
+// ---------- ward polygons (choropleth) ----------
+fetch(API+"/wards_geo").then(r=>r.json()).then(gj=>{
+  L.geoJSON(gj,{style:()=>({weight:.5,color:"#1b2532",fillColor:"#0e1722",fillOpacity:.35}),
+    onEachFeature:(f,layer)=>{
+      const k = norm(f.properties.WD22NM);
+      wardPolys[k]=layer;
+      layer.on("add",()=>{ try{ wardCentroids[k]=layer.getBounds().getCenter(); }catch(e){} });
+    }}).addTo(map);
 });
+fetch(API+"/wards").then(r=>r.json()).then(ws=>ws.forEach(w=>{ wardCentroids[norm(w.ward)] ||= L.latLng(w.lat,w.lon); }));
 
-fetch(API + "/validation").then(r => r.json()).then(v => {
-  document.getElementById("validation").textContent =
-    v.markdown.replace(/[#|]/g, "").replace(/\n{2,}/g, "\n").trim();
-}).catch(() => {});
-fetch(API + "/baseline").then(r => r.json()).then(b => {
-  document.getElementById("thru").textContent =
-    Math.round(b.throughput_inc_per_s).toLocaleString() + " incidents/sec";
-}).catch(() => {});
+// ---------- findings rail ----------
+fetch(API+"/findings").then(r=>r.json()).then(fs=>{
+  document.getElementById("rail").innerHTML = "<h2>FINDINGS — computed this weekend</h2>" + fs.map(f=>
+    `<div class="fcard" id="f-${f.id}" onclick="findingClick('${f.id}','${f.preset||""}')">
+       <div class="num">${f.number}</div><div class="t">${f.title}</div><div class="l">${f.line}</div></div>`).join("");
+});
+function findingClick(id, preset){ glowFinding(id); if(preset) { applyPreset(preset); runScenario(); } }
+function glowFinding(id){ document.querySelectorAll(".fcard").forEach(c=>c.classList.remove("glow"));
+  const el=document.getElementById("f-"+id); if(el){ el.classList.add("glow"); el.scrollIntoView({block:"nearest"}); } }
 
-async function runScenario() {
-  const btn = document.getElementById("run");
-  btn.disabled = true; btn.textContent = "SIMULATING A YEAR OF LONDON…";
-  try {
-    const res = await fetch(API + "/scenario", { method:"POST",
-      headers:{ "Content-Type":"application/json" },
-      body: JSON.stringify({ close: [...closed] }) }).then(r => r.json());
-    document.getElementById("result").style.display = "block";
-    document.getElementById("elapsed").textContent = "· " + res.elapsed_s + "s";
-    document.getElementById("r-mean").textContent = "+" + res.city.mean_delta_s + "s";
-    document.getElementById("r-p90").textContent = "+" + res.city.p90_delta_s + "s";
-    document.getElementById("r-pushed").textContent = res.city.pushed_past_6min.toLocaleString();
-    document.getElementById("r-wards").innerHTML = res.worst_wards.map(w =>
-      `<div class="ward"><span>${w.ward} · ${w.borough}</span><b>+${Math.round(w.delta_mean_s)}s</b></div>`).join("");
-    // paint ward deltas
-    Object.values(wardIndex).forEach(m => m.setStyle({ radius:0, fillOpacity:0 }));
-    Object.entries(res.ward_deltas || {}).forEach(([ward, d]) => {
-      const m = wardIndex[ward];
-      if (!m || d < 3) return;
-      m.setStyle({ radius: Math.min(26, 5 + d/6), weight:0, fillOpacity:.45,
-                   fillColor: d > 60 ? "#ff4d4d" : d > 20 ? "#ffb84d" : "#ffe44d" });
-      m.bindTooltip(`${ward}: +${Math.round(d)}s`);
-    });
-  } finally {
-    btn.disabled = false; btn.textContent = "RUN COUNTERFACTUAL";
+// ---------- presets ----------
+fetch(API+"/presets").then(r=>r.json()).then(ps=>{
+  presetDefs=ps;
+  const sel=document.getElementById("presets");
+  Object.entries(ps).forEach(([k,v])=>{ const o=document.createElement("option"); o.value=k; o.textContent=v.label; sel.appendChild(o); });
+});
+function applyPreset(k){ if(!k||!presetDefs[k]) return;
+  const p=presetDefs[k]; closed.clear(); p.close.forEach(n=>closed.add(n));
+  if(p.baseline==="pre2014" && !mode2014) toggle2014();
+  if(p.baseline==="current" && mode2014) toggle2014();
+  paint(); }
+
+function toggle2014(){
+  mode2014=!mode2014;
+  const b=document.getElementById("mode2014");
+  b.classList.toggle("on",mode2014);
+  b.textContent = mode2014 ? "⬡ PRE-2014 LONDON ACTIVE — 112 stations" : "⬡ ENTER PRE-2014 LONDON (112 stations)";
+  Object.values(ghosts).forEach(g=> mode2014 ? g.addTo(map) : g.remove());
+  paint();
+}
+
+function paint(){
+  Object.entries(stations).forEach(([n,m])=>m.setStyle({color:closed.has(n)?"#ff4545":"#46c2ff",fillColor:closed.has(n)?"#ff4545":"#46c2ff",fillOpacity:closed.has(n)?.85:.55}));
+  Object.entries(ghosts).forEach(([n,m])=>m.setStyle({color:closed.has(n)?"#ff4545":"#9d7bff",fillOpacity:closed.has(n)?.6:0}));
+  const el=document.getElementById("chips");
+  el.innerHTML = closed.size? "" : '<span class="strip">click stations to close them</span>';
+  closed.forEach(n=>{ const c=document.createElement("span"); c.className="sc"; c.textContent=n+" ✕";
+    c.onclick=()=>{closed.delete(n);paint();}; el.appendChild(c); });
+}
+
+// ---------- scenario ----------
+async function runScenario(){
+  const btn=document.getElementById("run");
+  btn.classList.add("flash"); setTimeout(()=>btn.classList.remove("flash"),250);
+  btn.disabled=true; btn.textContent="SIMULATING A YEAR OF LONDON…";
+  try{
+    const body={ close:[...closed], baseline: mode2014?"pre2014":"current", open:[] };
+    const t0=performance.now();
+    const res=await fetch(API+"/scenario",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify(body)}).then(r=>r.json());
+    const dt=((performance.now()-t0)/1000).toFixed(2);
+    renderResult(res, dt);
+    return res;
+  } finally { btn.disabled=false; btn.textContent="RUN COUNTERFACTUAL"; }
+}
+function renderResult(res, dt){
+  document.getElementById("result").style.display="block";
+  document.getElementById("r-mean").textContent="+"+res.city.mean_delta_s+"s";
+  document.getElementById("r-p90").textContent="+"+res.city.p90_delta_s+"s";
+  document.getElementById("r-pushed").textContent=Math.round(res.city.pushed_past_6min*3.265).toLocaleString();
+  document.getElementById("r-wards").innerHTML=res.worst_wards.slice(0,8).map(w=>
+    `<div class="ward"><span>${w.ward} · ${w.borough}</span><b>+${Math.round(w.delta_mean_s)}s</b></div>`).join("");
+  document.getElementById("stopwatch").innerHTML=
+    `<b>${res.elapsed_s}s</b> · 40,000 incidents replayed · ${(40000/res.elapsed_s/1000).toFixed(0)}k/sec`;
+  // choropleth
+  Object.values(wardPolys).forEach(p=>p.setStyle({fillColor:"#0e1722",fillOpacity:.35}));
+  Object.entries(res.ward_deltas||{}).forEach(([ward,d])=>{
+    const p=wardPolys[norm(ward)];
+    if(!p||d<3) return;
+    p.setStyle({fillColor: d>60?"#ff4545": d>20?"#ff8d3a":"#ffd23a", fillOpacity: Math.min(.75,.25+d/120)});
+    p.bindTooltip(`${ward}: +${Math.round(d)}s`,{className:"stn-tip"});
+  });
+}
+
+// ---------- compare (2014 three-way) ----------
+async function comparePostures(keys){
+  document.getElementById("comparecard").style.display="block";
+  const wrap=document.getElementById("compare"); wrap.innerHTML="";
+  const names={lsp5_actual:"POLITICIANS",lsp5_naive:"NAIVE RANK",lsp5_optimal:"TWIN OPTIMAL"};
+  const out=[];
+  let firstRes=null;
+  for(const k of keys){
+    const p=presetDefs[k];
+    const cell=document.createElement("div"); cell.className="cmp";
+    cell.innerHTML=`<div class="k">${names[k]||k}</div><div class="v">…</div><div class="k">broken promises/yr</div>`;
+    wrap.appendChild(cell);
+    const res=await fetch(API+"/scenario",{method:"POST",headers:{"Content-Type":"application/json"},
+      body:JSON.stringify({close:p.close, baseline:p.baseline})}).then(r=>r.json());
+    firstRes ||= res;
+    const pushed=Math.round(res.city.pushed_past_6min*3.265);
+    cell.querySelector(".v").textContent=pushed.toLocaleString();
+    out.push({cell,pushed});
+  }
+  out.sort((a,b)=>a.pushed-b.pushed)[0].cell.classList.add("win");
+  if(firstRes){ // paint the actual ten's damage onto the map + board
+    const p=presetDefs[keys[0]];
+    closed.clear(); p.close.forEach(n=>closed.add(n)); paint();
+    renderResult(firstRes, firstRes.elapsed_s);
   }
 }
+
+// ---------- the Ghost Operator executor ----------
+let cursor=0, queue=[], executing=false;
+setInterval(async ()=>{
+  try{
+    const d=await fetch(API+`/ui/commands?since=${cursor}`).then(r=>r.json());
+    cursor=d.next; queue.push(...d.commands);
+  }catch(e){}
+},600);
+setInterval(async ()=>{
+  if(executing||!queue.length) return;
+  executing=true;
+  const c=queue.shift();
+  try{ await exec(c); }catch(e){ console.warn("exec",c,e); }
+  setTimeout(()=>{executing=false;}, c.type==="narrate"?Math.max(900,(c.text||"").length*28):700);
+},200);
+
+async function exec(c){
+  switch(c.type){
+    case "narrate": narrate(c.text); break;
+    case "audio": { const v=document.getElementById("voice"); v.src=API+c.url; v.play().catch(()=>{}); break; }
+    case "reset": closed.clear(); if(mode2014) toggle2014(); paint(); break;
+    case "close_stations": (c.names||[]).forEach(n=>closed.add(n)); paint(); break;
+    case "open_2014": if(!mode2014) toggle2014(); break;
+    case "run_scenario": await runScenario(); break;
+    case "compare_postures": await comparePostures(c.presets||["lsp5_actual","lsp5_naive","lsp5_optimal"]); break;
+    case "focus_ward": { const ll=wardCentroids[norm(c.name)]; if(ll) map.flyTo(ll,13,{duration:1.4});
+        const p=wardPolys[norm(c.name)]; if(p){p.setStyle({weight:2,color:"#ffb648"}); setTimeout(()=>p.setStyle({weight:.5,color:"#1b2532"}),4000);} break; }
+    case "focus_station": { const m=stations[c.name]||ghosts[c.name]; if(m) map.flyTo(m.getLatLng(),13,{duration:1.4}); break; }
+    case "show_finding": glowFinding(c.id); break;
+    case "show_validation": narrate("Validated blind on 2025: mean +2.4%, p90 −3.7%, calibrated 78.8/80."); break;
+    case "show_metric": { const el=document.getElementById("r-pushed"); if(el){el.style.transition="none";el.style.transform="scale(1.6)";
+        setTimeout(()=>{el.style.transition="transform .4s";el.style.transform="scale(1)";},60);} break; }
+  }
+}
+function narrate(text){
+  const dot=document.getElementById("tdot"), t=document.getElementById("ttext");
+  dot.classList.add("live"); t.textContent="";
+  let i=0; const iv=setInterval(()=>{ t.textContent=text.slice(0,++i); if(i>=text.length){clearInterval(iv); setTimeout(()=>dot.classList.remove("live"),600);} },16);
+}
+
+// ---------- ask ----------
+async function askAgent(){
+  const inp=document.getElementById("ask"), btn=document.getElementById("askbtn");
+  const q=inp.value.trim(); if(!q) return;
+  btn.disabled=true; btn.textContent="THINKING"; narrate("Brigade Watch is thinking…");
+  try{
+    const r=await fetch(API+"/ask",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({text:q})});
+    if(r.status===429){ narrate("Hold on — still mid-choreography."); return; }
+    inp.value="";
+  } finally { btn.disabled=false; btn.textContent="ASK"; }
+}
+document.getElementById("ask").addEventListener("keydown",e=>{ if(e.key==="Enter") askAgent(); });
+
+// ---------- duty log + status chips ----------
+async function duty(){
+  try{
+    const d=await fetch(API+"/session/tail?n=14").then(r=>r.json());
+    const el=document.getElementById("dutylog");
+    el.innerHTML=(d.lines||[]).slice().reverse().map(l=>{
+      const k=l.kind||"", txt=l.text||l.narrative||(l.tool?`tool:${l.tool}`:k);
+      return `<div>[m${l.minute??"?"}] ${k}: ${String(txt).slice(0,90)}</div>`;}).join("");
+    const ev=(d.lines||[]).length;
+    document.getElementById("dutychip").textContent=`BRIGADE WATCH · ${d.file?d.file.replace("session_","").replace(".jsonl",""):"offline"} · live`;
+  }catch(e){}
+}
+setInterval(duty, 4000); duty();
 </script>
 </body>
 </html>

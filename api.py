@@ -18,39 +18,64 @@ from pathlib import Path
 import polars as pl
 from fastapi import FastAPI, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
+from fastapi.staticfiles import StaticFiles
 from pydantic import BaseModel, Field
 
 import sim
 
-app = FastAPI(title="SIXMINUTES", version="0.1")
+app = FastAPI(title="SIXMINUTES", version="0.2")
 app.add_middleware(CORSMiddleware, allow_origins=["*"], allow_methods=["*"], allow_headers=["*"])
+ROOT = Path(__file__).parent
+(ROOT / "logs/audio").mkdir(parents=True, exist_ok=True)
+app.mount("/vendor", StaticFiles(directory=ROOT / "static/vendor"), name="vendor")
+app.mount("/audio", StaticFiles(directory=ROOT / "logs/audio"), name="audio")
 
 WORLD: sim.World | None = None
-BASELINE: dict[int, pl.DataFrame] = {}      # sample_size -> baseline run
+BASELINE: dict[tuple[int, str], pl.DataFrame] = {}   # (sample, world) -> baseline run
 P_UNAVAIL = 0.40                            # calibrated on 2024 (see sim.calibrate)
 LOCK = threading.Lock()
 DEFAULT_SAMPLE = 40_000
+LSP5: dict[str, list[float]] = json.loads((ROOT / "data/lsp5_coords.json").read_text())
+
+# ---- Ghost Operator command bus -------------------------------------------
+UI_COMMANDS: list[dict] = []
+ASK_HISTORY: list[dict] = []
+ASK_BUSY = threading.Lock()
 
 
 class Scenario(BaseModel):
     close: list[str] = Field(default_factory=list)
+    open: list[str] = Field(default_factory=list)        # names from LSP5 catalogue
     pump_delta: dict[str, int] = Field(default_factory=dict)
+    baseline: str = Field(default="current", pattern="^(current|pre2014)$")
     sample: int = Field(default=DEFAULT_SAMPLE, ge=5_000, le=140_000)
 
 
-def _baseline(n: int) -> pl.DataFrame:
+def _posture(close: list[str], open_: list[str], pump_delta: dict[str, int]) -> sim.Posture:
+    opened = {n: (LSP5[n][0], LSP5[n][1], 1) for n in open_ if n in LSP5}
+    return sim.Posture(closed=frozenset(close), pump_delta=dict(pump_delta), opened=opened)
+
+
+def _baseline(n: int, world: str = "current") -> pl.DataFrame:
     with LOCK:
-        if n not in BASELINE:
-            BASELINE[n] = sim.simulate(WORLD, sim.Posture(), year=2025, sample=n,
-                                       seed=14, p_unavail=P_UNAVAIL)
-        return BASELINE[n]
+        key = (n, world)
+        if key not in BASELINE:
+            posture = (sim.Posture() if world == "current"
+                       else _posture([], list(LSP5.keys()), {}))
+            BASELINE[key] = sim.simulate(WORLD, posture, year=2025, sample=n,
+                                         seed=14, p_unavail=P_UNAVAIL)
+        return BASELINE[key]
 
 
 @app.on_event("startup")
 def _load() -> None:
     global WORLD
     WORLD = sim.World()
-    threading.Thread(target=_baseline, args=(DEFAULT_SAMPLE,), daemon=True).start()
+
+    def _prewarm() -> None:
+        _baseline(DEFAULT_SAMPLE, "current")
+        _baseline(DEFAULT_SAMPLE, "pre2014")   # 2014 mode answers instantly
+    threading.Thread(target=_prewarm, daemon=True).start()
 
 
 @app.get("/health")
@@ -118,12 +143,18 @@ def baseline() -> dict:
 @app.post("/scenario")
 def scenario(s: Scenario) -> dict:
     w = WORLD
-    unknown = [x for x in list(s.close) + list(s.pump_delta) if x not in w.sidx]
+    unknown = [x for x in list(s.close) + list(s.pump_delta) if x not in w.sidx and x not in LSP5]
+    unknown += [x for x in s.open if x not in LSP5]
     if unknown:
         raise HTTPException(400, f"unknown stations: {unknown}; see GET /stations")
     t0 = time.time()
-    base = _baseline(s.sample)
-    posture = sim.Posture(closed=frozenset(s.close), pump_delta=dict(s.pump_delta))
+    base = _baseline(s.sample, s.baseline)
+    # closing a 2014 station in pre2014 world = omit it from the opened set
+    if s.baseline == "pre2014":
+        open_set = [n for n in LSP5 if n not in s.close]
+    else:
+        open_set = [n for n in s.open if n not in s.close]
+    posture = _posture([c for c in s.close if c in w.sidx], open_set, s.pump_delta)
     cf = sim.simulate(w, posture, year=2025, sample=s.sample, seed=14, p_unavail=P_UNAVAIL)
     j = base.select("IncidentNumber", base_s=pl.col("sim_s")).join(
         cf.select("IncidentNumber", "sim_s", "ward", "borough"), on="IncidentNumber"
@@ -148,6 +179,100 @@ def scenario(s: Scenario) -> dict:
         "worst_wards": affected.head(12).to_dicts(),
         "ward_deltas": {r["ward"]: round(r["delta_mean_s"], 1) for r in by_ward.iter_rows(named=True)},
     }
+
+
+# ---------------------------- Ghost Operator --------------------------------
+
+@app.get("/ui/commands")
+def ui_commands(since: int = 0) -> dict:
+    return {"next": len(UI_COMMANDS), "commands": UI_COMMANDS[max(0, since):]}
+
+
+@app.post("/ui/emit")
+def ui_emit(cmd: dict) -> dict:
+    cmd["id"] = len(UI_COMMANDS)
+    cmd["ts"] = time.time()
+    UI_COMMANDS.append(cmd)
+    return {"ok": True, "id": cmd["id"]}
+
+
+class Ask(BaseModel):
+    text: str
+    speak: bool = True
+
+
+@app.post("/ask")
+def ask(a: Ask) -> dict:
+    """The command bar: text in -> agent reasons -> choreography out (via /ui/emit)."""
+    if not ASK_BUSY.acquire(blocking=False):
+        raise HTTPException(429, "agent is mid-choreography; wait for it to finish")
+    try:
+        import agent as brigade
+        brigade.SPEAK_NARRATION = a.speak
+        answer = brigade.agent_turn(a.text, ASK_HISTORY)
+        # ensure the final answer always lands on screen even if the model forgot ui.narrate
+        if not any(c.get("type") == "narrate" and c.get("final") for c in UI_COMMANDS[-8:]):
+            ui_emit({"type": "narrate", "text": answer, "final": True})
+        return {"answer": answer}
+    finally:
+        ASK_BUSY.release()
+
+
+@app.get("/session/tail")
+def session_tail(n: int = 30) -> dict:
+    """Duty log: tail the newest session JSONL (patrol or ask process)."""
+    files = sorted(Path("logs").glob("session_*.jsonl"), key=lambda p: p.stat().st_mtime)
+    if not files:
+        return {"file": None, "lines": []}
+    lines = files[-1].read_text().strip().splitlines()[-n:]
+    return {"file": files[-1].name, "lines": [json.loads(x) for x in lines]}
+
+
+@app.get("/wards_geo")
+def wards_geo() -> dict:
+    return json.loads((ROOT / "data/london_wards.geojson").read_text())
+
+
+@app.get("/stations2014")
+def stations2014() -> list[dict]:
+    E = [v[0] for v in LSP5.values()]
+    N = [v[1] for v in LSP5.values()]
+    lat, lon = _to_wgs(E, N)
+    return [{"name": n, "lat": float(lat[i]), "lon": float(lon[i])}
+            for i, n in enumerate(LSP5.keys())]
+
+
+@app.get("/presets")
+def presets() -> dict:
+    naive = ["Clerkenwell", "Westminster", "Bow", "Dockhead", "Silvertown",
+             "Leyton", "Belsize", "Downham", "Deptford", "Stratford"]
+    optimal = ["Dowgate", "Millwall", "Dockhead", "New Cross", "Chelsea",
+               "Shadwell", "Islington", "Lewisham", "Stratford", "East Ham"]
+    return {
+        "biggin_hill": {"label": "Close Biggin Hill (the −0.18 law)", "close": ["Biggin Hill"], "baseline": "current"},
+        "whitechapel": {"label": "Close Whitechapel (7× busier, nearly free)", "close": ["Whitechapel"], "baseline": "current"},
+        "lsp5_actual": {"label": "2014: the politicians' ten", "close": list(LSP5.keys()), "baseline": "pre2014"},
+        "lsp5_naive": {"label": "2014: the naive ten", "close": naive, "baseline": "pre2014"},
+        "lsp5_optimal": {"label": "2014: the optimizer's ten", "close": optimal, "baseline": "pre2014"},
+    }
+
+
+@app.get("/findings")
+def findings() -> list[dict]:
+    return [
+        {"id": "law", "number": "−0.18", "title": "Call volume anti-predicts closure damage",
+         "line": "Biggin Hill: quietest station, near-critical. Whitechapel: 7× busier, nearly free.",
+         "preset": "biggin_hill"},
+        {"id": "2014", "number": "63s ≈ 52s", "title": "The twin reproduces the 2014 closures",
+         "line": "Measured damage +63s (DiD); the twin, blind to pre-2021 data, predicts 52s.",
+         "preset": "lsp5_actual"},
+        {"id": "betterten", "number": "1.47×", "title": "2014 closed the wrong ten",
+         "line": "Set-aware optimization: same savings, 1,287 fewer broken promises a year, 0/10 overlap.",
+         "preset": "lsp5_optimal"},
+        {"id": "night", "number": "+47s", "title": "Night turnout is station-specific",
+         "line": "Dagenham crews: 80s by day, 127s at night. The promise has a time-of-day geography.",
+         "preset": None},
+    ]
 
 
 @app.get("/layers/{svc}")

@@ -1,0 +1,4 @@
+{"ts": "2026-06-06T18:05:46.562790+00:00", "minute": 0, "kind": "user", "text": "Show me what happens if Biggin Hill closes."}
+{"ts": "2026-06-06T18:05:51.932475+00:00", "minute": 0, "kind": "tool_call", "tool": "ui", "args": {"action": "narrate", "text": "I'll simulate closing Biggin Hill and show the impact on response times."}}
+{"ts": "2026-06-06T18:05:51.953374+00:00", "minute": 0, "kind": "tool_result", "tool": "ui", "result_preview": "{'ok': True}"}
+{"ts": "2026-06-06T18:05:56.152151+00:00", "minute": 0, "kind": "agent", "text": ""}

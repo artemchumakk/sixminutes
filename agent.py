@@ -91,9 +91,12 @@ def recall(query: str = "", minute: int | None = None, limit: int = 12) -> list[
 
 
 # ----------------------------------------------------------------- tools ----
-def tool_run_scenario(close: list[str] | None = None, pump_delta: dict | None = None) -> dict:
-    r = httpx.post(f"{API}/scenario", json={"close": close or [], "pump_delta": pump_delta or {}},
-                   timeout=120)
+def tool_run_scenario(close: list[str] | None = None, pump_delta: dict | None = None,
+                      baseline: str = "current", open: list[str] | None = None) -> dict:
+    r = httpx.post(f"{API}/scenario",
+                   json={"close": close or [], "pump_delta": pump_delta or {},
+                         "baseline": baseline, "open": open or []},
+                   timeout=180)
     r.raise_for_status()
     out = r.json()
     out["worst_wards"] = out["worst_wards"][:6]
@@ -124,11 +127,55 @@ def tool_recall(query: str = "", minute: int | None = None) -> list[dict]:
     return recall(query, minute)
 
 
+SPEAK_NARRATION = True
+UI_VERBS = {"narrate", "reset", "close_stations", "open_2014", "run_scenario",
+            "compare_postures", "focus_ward", "focus_station", "show_finding",
+            "show_validation", "show_metric"}
+
+
+def tool_ui(action: str, **kwargs) -> dict:
+    """Ghost Operator: emit a choreography verb to the dashboard command bus."""
+    if action not in UI_VERBS:
+        return {"error": f"unknown ui action '{action}'; allowed: {sorted(UI_VERBS)}"}
+    cmd = {"type": action, **kwargs}
+    httpx.post(f"{API}/ui/emit", json=cmd, timeout=10)
+    if action == "narrate" and SPEAK_NARRATION and EL_KEY:
+        def _speak(text: str) -> None:
+            try:
+                out = tts(text, play=False)
+                if out:
+                    httpx.post(f"{API}/ui/emit", json={"type": "audio", "url": f"/audio/{out.name}"}, timeout=10)
+            except Exception as e:
+                jlog("error", where="ui_tts", error=str(e)[:200])
+        import threading
+        threading.Thread(target=_speak, args=(kwargs.get("text", ""),), daemon=True).start()
+    return {"ok": True}
+
+
 TOOLS_DOC = """You can call tools by replying ONLY a JSON object (no prose around it):
-  {"tool":"run_scenario","args":{"close":["Soho"],"pump_delta":{}}}   -> simulate closing/changing stations (validated digital twin, 2025 replay)
+  {"tool":"run_scenario","args":{"close":["Soho"],"pump_delta":{},"baseline":"current"}}   -> simulate closing/changing stations (validated digital twin, 2025 replay). baseline "pre2014" = the reconstructed 112-station pre-2014 London (use for any 2014 question; closing 2014 station names is allowed there: Clerkenwell, Westminster, Southwark, Belsize, Kingsland, Knightsbridge, Downham, Woolwich, Bow, Silvertown)
   {"tool":"sql","args":{"query":"SELECT ..."}}                        -> read-only SQL over: incidents(IncidentNumber, DateOfCall, CalYear, HourOfCall, IncidentGroup, StopCodeDescription, PropertyCategory, IncGeo_BoroughName, IncGeo_WardName, FirstPumpArriving_AttendanceTime, NumPumpsAttending, ...), mobilisations(TurnoutTimeSeconds, TravelTimeSeconds, AttendanceTimeSeconds, DeployedFromStation_Name, DelayCode_Description, ...), stations(DeployedFromStation_Name, E, N, turnout_med), closure_damage(station-level damage if closed)
   {"tool":"recall","args":{"query":"Camden"}} or {"args":{"minute":14}} -> your session memory (events you observed earlier)
+  {"tool":"ui","args":{"action":"...", ...}} -> OPERATE THE WALL DASHBOARD (the Ghost Operator). Actions:
+     {"action":"narrate","text":"one or two short sentences"}  caption + spoken aloud
+     {"action":"reset"}  clear the board
+     {"action":"close_stations","names":["Soho"]}  stations turn red on the map
+     {"action":"open_2014"}  enter pre-2014 London: the ten 2014-closed stations appear as ghosts
+     {"action":"run_scenario","baseline":"current"|"pre2014"}  visually run the current board selection
+     {"action":"compare_postures","presets":["lsp5_actual","lsp5_naive","lsp5_optimal"]}  the 2014 three-way showdown
+     {"action":"focus_ward","name":"WEST END"} | {"action":"focus_station","name":"Soho"}  fly the camera
+     {"action":"show_finding","id":"law"|"2014"|"betterten"|"night"}  glow a findings card
+     {"action":"show_validation"} | {"action":"show_metric","key":"pushed_past_6min"}
 To answer the user directly, reply: {"say":"<your answer>"}
+
+CHOREOGRAPHY CONTRACT - when the user says "show me", "demonstrate", "what happens if", or asks anything visual, you MUST hit ALL six beats in order:
+ 1) ui.narrate a one-line plan
+ 2) ui.reset, then ui.close_stations and/or ui.open_2014 — REQUIRED: the wall runs ONLY what is on the board; ui.run_scenario with an empty board shows nothing
+ 3) the run_scenario DATA tool for the numbers (same posture as the board)
+ 4) ui.run_scenario to animate it
+ 5) ui.focus_ward with the worst ward name from your step-3 numbers
+ 6) ui.narrate the verdict WITH numbers, then {"say":...} summarizing.
+For 2014 questions: ui.open_2014, then ui.close_stations with the politicians' ten, then ui.run_scenario (baseline pre2014), then ui.compare_postures; cite 4,049 vs 5,290 vs 2,762 broken promises/yr (politicians/naive/optimizer) and that the optimizer's ten shares 0/10 stations with 2014.
 Rules: lead with numbers; control-room brevity; seconds matter. Fire tier is validated (sim within ±5% of held-out 2025); police/ambulance layers are Tier B (demand + transferred physics) - say so if asked. Never invent events not in recall results."""
 
 SYSTEM = ("You are Brigade Watch, the duty intelligence officer for SIXMINUTES - a validated "
@@ -138,17 +185,30 @@ SYSTEM = ("You are Brigade Watch, the duty intelligence officer for SIXMINUTES -
 
 
 # ------------------------------------------------------------------ llm -----
-def llm(messages: list[dict], max_tokens: int = 700) -> str:
+def llm(messages: list[dict], max_tokens: int = 4000) -> str:
     r = httpx.post(f"{LLM_BASE}/chat/completions",
                    headers={"Authorization": f"Bearer {LLM_KEY}"},
                    json={"model": LLM_MODEL, "messages": messages,
                          "temperature": 0.2, "max_tokens": max_tokens},
                    timeout=180)
     r.raise_for_status()
-    return r.json()["choices"][0]["message"]["content"]
+    msg = r.json()["choices"][0]["message"]
+    # Nemotron reasoning models may park output in reasoning_content with empty content
+    return (msg.get("content") or "").strip() or (msg.get("reasoning_content") or "").strip()
 
 
 def extract_json(text: str) -> dict | None:
+    # walk every '{' and take the FIRST blob that parses (models mix prose + JSON)
+    dec = json.JSONDecoder()
+    for i, ch in enumerate(text):
+        if ch != "{":
+            continue
+        try:
+            obj, _ = dec.raw_decode(text[i:])
+            if isinstance(obj, dict) and ("tool" in obj or "say" in obj):
+                return obj
+        except json.JSONDecodeError:
+            continue
     m = re.search(r"\{.*\}", text, re.S)
     if not m:
         return None
@@ -175,14 +235,23 @@ def agent_turn(user_text: str, history: list[dict]) -> str:
     history.append({"role": "user", "content": user_text})
     jlog("user", text=user_text)
     msgs = [{"role": "system", "content": SYSTEM}] + history[-16:]
-    for _hop in range(5):
+    bad = 0
+    for _hop in range(14):  # choreographies are many small ui hops
         raw = llm(msgs)
-        obj = extract_json(raw) or {"say": raw.strip()}
+        obj = extract_json(raw) if raw else None
+        if obj is None:
+            bad += 1
+            if bad <= 3:  # reasoning leak / empty: re-demand the protocol, never speak thoughts
+                msgs.append({"role": "user", "content":
+                             'Protocol violation: respond ONLY with one JSON object now - either {"tool":...,"args":{...}} or {"say":"..."}.'})
+                continue
+            obj = {"say": (raw or "I lost the thread - ask me again.").strip()[:400]}
         if "tool" in obj:
             name, args = obj["tool"], obj.get("args", {})
             jlog("tool_call", tool=name, args=args)
             try:
-                fn = {"run_scenario": tool_run_scenario, "sql": tool_sql, "recall": tool_recall}[name]
+                fn = {"run_scenario": tool_run_scenario, "sql": tool_sql,
+                      "recall": tool_recall, "ui": tool_ui}[name]
                 result = fn(**args)
             except Exception as e:
                 result = {"error": str(e)[:300]}
