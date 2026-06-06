@@ -28,8 +28,10 @@ Headline findings, all computed this weekend from open data:
   station, is among its most critical; Whitechapel, 7× busier, is nearly redundant.
 - The 2014 LSP5 closures measurably cost +63s in their former grounds (DiD on open
   data); reopening them today would bring 4,670 incidents/yr back under the promise.
-- Closure SETS interact: a naive per-station optimizer loses to the 2014 committee's
-  selection — set-aware simulation is the only honest planner (see docs/better_ten.md).
+- Closure SETS interact: a naive per-station ranking loses to the 2014 committee's
+  selection (politicians beat the spreadsheet) — but a set-aware sequential optimizer
+  (~300 simulated years of London) finds a zero-overlap alternative ten with **47%
+  fewer broken 6-minute promises for identical savings** (docs/better_ten.md).
 - Night turnout penalty is station-specific (Dagenham +47s); 44.8% of incidents are
   false alarms consuming ~684k pump-minutes/yr in non-residential AFAs alone.
 

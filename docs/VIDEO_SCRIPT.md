@@ -37,14 +37,16 @@
 > shows their neighbourhoods got 63 seconds slower. Our twin — which has never seen a
 > single pre-2021 record — predicts 52. Two witnesses, eleven years apart, same verdict."
 *Better Ten slide.*
-> "Then we tried to beat the 2014 committee with an optimizer — and the twin caught US:
-> closure sets interact; ten individually-cheap closures cluster and compound. [Per
-> betterten2 result: 'Our set-aware optimizer finally beat them by X%' / 'Even set-aware
-> optimization barely improves on 2014 — the twin certifies the selection; the damage was
-> the policy's price.'] Either way: this is why cities need simulators, not spreadsheets —
-> call volume correlates NEGATIVELY, minus 0.18, with what closing a station actually costs.
-> Biggin Hill: quietest station in London, second-most-damaging closure. Whitechapel:
-> seven times busier, nearly free."
+> "Then we asked: did they close the right ten? First try, a ranking — and the twin
+> caught US: closure sets interact, and our naive ten was WORSE than the committee's.
+> The politicians beat the spreadsheet. So we let the twin plan properly — close one,
+> re-simulate all of London, choose the next: three hundred simulated years in six
+> minutes. Its ten shares NOTHING with 2014 — and breaks 47% fewer six-minute promises.
+> Same savings, thirteen hundred fewer broken promises a year. The committee wasn't
+> stupid; they didn't have this machine. And the law underneath it all: call volume
+> correlates NEGATIVELY, minus 0.18, with what closing a station costs. Biggin Hill:
+> quietest in London, near-critical. Whitechapel: seven times busier, nearly free.
+> Cities count calls because counting is easy. Coverage is a network."
 
 ## 3:30–4:10 — THE PERSISTENT AGENT (ElevenLabs bounty)
 *Session log scrolling; memory.db query; live recall.*

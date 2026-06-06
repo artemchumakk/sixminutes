@@ -19,3 +19,19 @@ Optimizer's ten: Clerkenwell, Westminster, Bow, Dockhead, Silvertown, Leyton, Be
 Caveats (state on camera): savings proxied by station count; single-pump reopenings;
 2025 demand (not 2012); greedy + 3km spacing, not exhaustive search — a true optimum
 would only widen the gap.
+
+
+## Round 2 — set-aware sequential greedy (interactions respected)
+
+Naive single-closure ranking LOST to the 2014 committee (1,619 vs 1,237 pushed —
+closure sets interact; cheap closures cluster). Sequential greedy re-simulates the
+network after each commitment:
+
+- twin's sequential ten: Dowgate, Millwall, Dockhead, New Cross, Chelsea, Shadwell, Islington, Lewisham, Stratford, East Ham
+- overlap with 2014: 0/10 ()
+- broken 6-min promises/yr: politicians 4,049 vs twin 2,762 (1.47x)
+- city mean: +9.0s vs +6.2s
+
+Either reading is a finding: if the twin wins, only set-aware simulation can plan
+closures; if 2014 holds up, the twin *certifies* the selection — and the measured
++63s damage (see closures_2014.md) was the price of the policy, not of the picks.
