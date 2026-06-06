@@ -50,8 +50,8 @@
 
 ## 3:30–4:10 — THE PERSISTENT AGENT (ElevenLabs bounty)
 *Session log scrolling; memory.db query; live recall.*
-> "Brigade Watch has been on duty since 18:20 yesterday — a 13-hour logged session,
-> narrating a 60× replay of 2025, remembering every notable event in a structured
+> "Brigade Watch has been on duty since [SUNDAY: real session start] — a [N]-hour logged
+> session, narrating a 60× replay, remembering every notable event in a structured
 > registry plus its voice log. Ask it what happened at minute fourteen — it knows.
 > Ask it about Dagenham — it tells you night turnout there jumps 47 seconds."
 
