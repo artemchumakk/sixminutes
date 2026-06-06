@@ -273,12 +273,14 @@ async function comparePostures(keys){
 }
 
 // ---------- the Ghost Operator executor ----------
-// cursor starts at the LIVE TIP: never replay history on page load
+// cursor starts at the LIVE TIP (no history replay); init self-heals until it succeeds
 let cursor=null, queue=[], executing=false;
-fetch(API+"/ui/commands?since=999999999").then(r=>r.json()).then(d=>{ cursor=d.next; });
 setInterval(async ()=>{
-  if(cursor===null) return;
   try{
+    if(cursor===null){
+      const d=await fetch(API+"/ui/commands?since=999999999").then(r=>r.json());
+      cursor=d.next; return;
+    }
     const d=await fetch(API+`/ui/commands?since=${cursor}`).then(r=>r.json());
     cursor=d.next; queue.push(...d.commands);
   }catch(e){}
@@ -313,21 +315,28 @@ async function exec(c){
   }
 }
 function narrate(text){
+  lastNarrateAt=Date.now();
   const dot=document.getElementById("tdot"), t=document.getElementById("ttext");
   dot.classList.add("live"); t.textContent="";
   let i=0; const iv=setInterval(()=>{ t.textContent=text.slice(0,++i); if(i>=text.length){clearInterval(iv); setTimeout(()=>dot.classList.remove("live"),600);} },16);
 }
 
 // ---------- ask ----------
+let lastNarrateAt=0;
 async function askAgent(){
   const inp=document.getElementById("ask"), btn=document.getElementById("askbtn");
   const q=inp.value.trim(); if(!q) return;
   btn.disabled=true; btn.textContent="THINKING"; narrate("Brigade Watch is thinking…");
+  const t0=Date.now();
   try{
     const r=await fetch(API+"/ask",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({text:q})});
     if(r.status===429){ narrate("Hold on — still mid-choreography."); return; }
+    const j=await r.json();
     inp.value="";
-  } finally { btn.disabled=false; btn.textContent="ASK"; }
+    // belt & braces: if no narration reached the wall during this ask, show the answer directly
+    setTimeout(()=>{ if(lastNarrateAt<=t0+1200 && j.answer) narrate(j.answer.slice(0,300)); }, 1500);
+  } catch(e){ narrate("Lost the agent mid-thought — check the API and try again."); }
+  finally { btn.disabled=false; btn.textContent="ASK"; }
 }
 document.getElementById("ask").addEventListener("keydown",e=>{ if(e.key==="Enter") askAgent(); });
 
