@@ -58,12 +58,41 @@ def health() -> dict:
     return {"ok": WORLD is not None, "stations": len(WORLD.names) if WORLD else 0}
 
 
+@app.get("/")
+def index():
+    from fastapi.responses import FileResponse
+    return FileResponse(Path(__file__).parent / "dashboard.html")
+
+
+def _to_wgs(E, N):
+    from pyproj import Transformer
+    t = Transformer.from_crs(27700, 4326, always_xy=True)
+    lon, lat = t.transform(E, N)
+    return lat, lon
+
+
 @app.get("/stations")
 def stations() -> list[dict]:
     w = WORLD
+    lat, lon = _to_wgs(w.SE, w.SN)
     return [
-        {"name": w.names[i], "E": float(w.SE[i]), "N": float(w.SN[i]), "pumps": int(w.pumps[i])}
+        {"name": w.names[i], "E": float(w.SE[i]), "N": float(w.SN[i]),
+         "lat": float(lat[i]), "lon": float(lon[i]), "pumps": int(w.pumps[i])}
         for i in range(len(w.names))
+    ]
+
+
+@app.get("/wards")
+def wards() -> list[dict]:
+    """Ward centroids (from incident coords) for delta visualisation."""
+    w = (WORLD.inc.group_by("IncGeo_WardName", "IncGeo_BoroughName")
+         .agg(E=pl.col("Easting_rounded").median(), N=pl.col("Northing_rounded").median(), n=pl.len())
+         .filter(pl.col("n") >= 20))
+    lat, lon = _to_wgs(w["E"].to_numpy(), w["N"].to_numpy())
+    return [
+        {"ward": r["IncGeo_WardName"], "borough": r["IncGeo_BoroughName"],
+         "lat": float(lat[i]), "lon": float(lon[i]), "n": int(r["n"])}
+        for i, r in enumerate(w.iter_rows(named=True))
     ]
 
 
