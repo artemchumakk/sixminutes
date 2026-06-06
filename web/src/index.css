@@ -80,3 +80,8 @@ body {
   animation: blink 1s step-end infinite;
   color: #9b9b9b;
 }
+
+/* fire map motion: choropleth blooms, stations breathe (Leaflet SVG paths) */
+.leaflet-interactive {
+  transition: fill 0.55s ease, fill-opacity 0.55s ease, stroke 0.25s ease;
+}

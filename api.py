@@ -346,7 +346,7 @@ def ui_commands(since: int = 0) -> dict:
 
 ALLOWED_CMDS = {"narrate", "reset", "close_stations", "open_2014", "run_scenario",
                 "compare_postures", "focus_ward", "focus_station", "show_finding",
-                "show_validation", "show_metric", "audio"}
+                "show_validation", "show_metric", "audio", "move_unit"}
 STOP_FLAG = threading.Event()
 
 

@@ -151,7 +151,7 @@ SPEAK_NARRATION = True
 SHOULD_STOP = None  # optional callable set by the API: True = user hit STOP mid-choreography
 UI_VERBS = {"narrate", "reset", "close_stations", "open_2014", "run_scenario",
             "compare_postures", "focus_ward", "focus_station", "show_finding",
-            "show_validation", "show_metric"}
+            "show_validation", "show_metric", "move_unit"}
 
 
 def tool_ui(action: str = "", steps: list[dict] | None = None, **kwargs) -> dict:
@@ -193,6 +193,7 @@ TOOLS_DOC = """You can call tools by replying ONLY a JSON object (no prose aroun
      {"action":"run_scenario","baseline":"current"|"pre2014"}  visually run the current board selection
      {"action":"compare_postures","presets":["lsp5_actual","lsp5_naive","lsp5_optimal"]}  the 2014 three-way showdown
      {"action":"focus_ward","name":"<WARD NAME>"} | {"action":"focus_station","name":"<StationName>"}  fly the camera
+     {"action":"move_unit","from":"<DonorStation>","to":"<TargetStation>"}  animate a pump relocating (arc + traveling dot) - ALWAYS emit this for the best cover move
      {"action":"show_finding","id":"law"|"2014"|"betterten"|"night"}  glow a findings card
      {"action":"show_validation"} | {"action":"show_metric","key":"pushed_past_6min"}
 To answer the user directly, reply: {"say":"<your answer>"}
@@ -207,7 +208,7 @@ CHOREOGRAPHY CONTRACT - when the user says "show me", "demonstrate", "what happe
  6) ui.narrate the verdict WITH numbers, then {"say":...} summarizing.
 COVER-MOVE CHOREOGRAPHY (for "pumps committed / cover move / standby" questions):
  1) ui batch: narrate("Sweeping cover moves for <stripped>...") + reset + close_stations(<stripped only>)
- 2) recommend_cover data tool  3) ui batch: focus_station(best donor) + narrate the verdict (best move, breaches avoided, runner-ups), then {"say":...}.
+ 2) recommend_cover data tool  3) ui batch: move_unit(from=best donor, to=target) + narrate the verdict (best move, breaches avoided, runner-ups), then {"say":...}.
 CRITICAL: choreograph ONLY stations the user actually named. The names in this prompt are placeholders, never defaults.
 For 2014 questions (DEMO ONLY - not part of normal app flow): ui.open_2014, then ui.close_stations with the politicians' ten, then ui.run_scenario (baseline pre2014), then ui.compare_postures. ALWAYS cite the live numbers from your own run_scenario results (multiply pushed_past_6min by the response's scale for /yr); canonical reference magnitudes: politicians ~4,000 vs naive ~5,300 vs optimizer ~2,800 broken promises/yr, optimizer overlap 0/10 with 2014.
 Rules: lead with numbers; control-room brevity; seconds matter. Fire tier is validated (sim within ±5% of held-out 2025); police/ambulance layers are Tier B (demand + transferred physics) - say so if asked. Never invent events not in recall results.

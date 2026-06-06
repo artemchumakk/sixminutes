@@ -88,6 +88,75 @@ const FireMap = forwardRef<
   const busTimer = useRef<number | null>(null);
   const voiceAudio = useRef<HTMLAudioElement | null>(null);
 
+  // pulse a marker's radius (close/arrival emphasis)
+  const pulse = useCallback((m: L.CircleMarker, scale = 1.9, ms = 480) => {
+    const r0 = m.getRadius();
+    const t0 = performance.now();
+    const step = (t: number) => {
+      const p = Math.min(1, (t - t0) / ms);
+      const k = 1 + (scale - 1) * Math.sin(p * Math.PI);
+      m.setRadius(r0 * k);
+      if (p < 1) requestAnimationFrame(step);
+      else m.setRadius(r0);
+    };
+    requestAnimationFrame(step);
+  }, []);
+
+  // animated pump relocation: progressive arc + traveling dot + arrival pulse
+  const animateMove = useCallback(
+    (fromName: string, toName: string) => {
+      const map = mapRef.current;
+      const A = stationsRef.current[fromName]?.getLatLng();
+      const B = stationsRef.current[toName]?.getLatLng();
+      if (!map || !A || !B) return;
+      // quadratic bezier control point, offset perpendicular for a gentle arc
+      const mlat = (A.lat + B.lat) / 2;
+      const mlng = (A.lng + B.lng) / 2;
+      const dx = B.lng - A.lng;
+      const dy = B.lat - A.lat;
+      const ctrl = L.latLng(mlat - dx * 0.22, mlng + dy * 0.22);
+      const N = 56;
+      const pts: L.LatLng[] = [];
+      for (let i = 0; i <= N; i++) {
+        const t = i / N;
+        const lat = (1 - t) ** 2 * A.lat + 2 * (1 - t) * t * ctrl.lat + t ** 2 * B.lat;
+        const lng = (1 - t) ** 2 * A.lng + 2 * (1 - t) * t * ctrl.lng + t ** 2 * B.lng;
+        pts.push(L.latLng(lat, lng));
+      }
+      map.flyToBounds(L.latLngBounds([A, B]).pad(0.35), { duration: 0.9 });
+      const line = L.polyline([pts[0]], {
+        pane: "stns", color: accent, weight: 3.5, opacity: 0.9, dashArray: "1,7", lineCap: "round",
+      }).addTo(map);
+      const dot = L.circleMarker(pts[0], {
+        pane: "stns", radius: 7, weight: 2, color: "#ffffff", fillColor: accent, fillOpacity: 1,
+      }).addTo(map);
+      const DUR = 1700;
+      const t0 = performance.now();
+      const step = (t: number) => {
+        const p = Math.min(1, (t - t0) / DUR);
+        const ease = p < 0.5 ? 2 * p * p : 1 - (-2 * p + 2) ** 2 / 2; // easeInOutQuad
+        const idx = Math.max(1, Math.round(ease * N));
+        line.setLatLngs(pts.slice(0, idx + 1));
+        dot.setLatLng(pts[Math.min(idx, N)]);
+        if (p < 1) requestAnimationFrame(step);
+        else {
+          const target = stationsRef.current[toName];
+          if (target) pulse(target, 2.2, 600);
+          window.setTimeout(() => {
+            line.setStyle({ opacity: 0 });
+            dot.setStyle({ fillOpacity: 0, opacity: 0 });
+            window.setTimeout(() => {
+              map.removeLayer(line);
+              map.removeLayer(dot);
+            }, 600);
+          }, 2600);
+        }
+      };
+      requestAnimationFrame(step);
+    },
+    [accent, pulse]
+  );
+
   const paintStations = useCallback(() => {
     Object.entries(stationsRef.current).forEach(([name, m]) => {
       const isClosed = closedRef.current.has(name);
@@ -144,6 +213,8 @@ const FireMap = forwardRef<
       if (next.has(name)) next.delete(name);
       else {
         next.add(name);
+        const m = stationsRef.current[name];
+        if (m) pulse(m);
         fetchStationDetail(name).then(setStation).catch(() => undefined);
       }
       closedRef.current = next;
@@ -151,7 +222,7 @@ const FireMap = forwardRef<
       paintStations();
       scheduleRun();
     },
-    [paintStations, scheduleRun]
+    [paintStations, scheduleRun, pulse]
   );
 
   const onHours = useCallback(
@@ -268,7 +339,16 @@ const FireMap = forwardRef<
           break;
         case "close_stations":
           setClosedSet((prev) => new Set([...prev, ...(c.names ?? [])]));
+          (c.names ?? []).forEach((n) => {
+            const m = stationsRef.current[n];
+            if (m) pulse(m);
+          });
           break;
+        case "move_unit": {
+          const cc = c as UiCommand & { from?: string; to?: string };
+          if (cc.from && cc.to) animateMove(cc.from, cc.to);
+          break;
+        }
         case "run_scenario":
           void run();
           break;
@@ -287,7 +367,7 @@ const FireMap = forwardRef<
           break; // 2014/compare verbs live on the wall; harmless to skip here
       }
     },
-    [paintWards, run, setClosedSet]
+    [paintWards, run, setClosedSet, animateMove, pulse]
   );
 
   const stopBusPolling = useCallback(() => {
@@ -404,7 +484,7 @@ const FireMap = forwardRef<
 
       {/* analytics: appears only once an analysis is live */}
       {analysing && (
-        <div className="absolute bottom-3 right-3 top-14 z-[1100] w-[320px]">
+        <div className="animate-fade-up absolute bottom-3 right-3 top-14 z-[1100] w-[320px]">
           <FirePanel
             accent={accent}
             baseline={baseline}

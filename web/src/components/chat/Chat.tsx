@@ -349,11 +349,12 @@ function FireVoiceLoop({
       };
       rec.start();
 
-      // --- VAD: calibrate noise floor, then speech-end on ~1.1s of quiet ---
+      // --- VAD: longer calibration + SUSTAINED speech required (noise-proof) ---
       const buf = new Uint8Array(analyserRef.current!.fftSize);
       const t0 = performance.now();
-      let floor = 4;
+      let floor = 5;
       let speech = false;
+      let loudStreak = 0;
       let lastLoud = performance.now();
       meterRef.current = window.setInterval(() => {
         analyserRef.current!.getByteTimeDomainData(buf);
@@ -364,18 +365,24 @@ function FireVoiceLoop({
         }
         const rms = Math.sqrt(sum / buf.length);
         const now = performance.now();
-        if (now - t0 < 350) {
-          floor = Math.max(floor, rms * 1.4);
+        if (now - t0 < 700) {
+          floor = Math.max(floor, rms * 1.25); // learn the room for 0.7s
           return;
         }
-        const thr = Math.max(6, floor * 2.0);
+        const thr = Math.max(11, floor * 3.2);
         if (rms > thr) {
-          (rec as MediaRecorder & { _spoke?: boolean })._spoke = true;
-          speech = true;
+          loudStreak += 1;
           lastLoud = now;
+          if (loudStreak >= 4 && !speech) {
+            // ~360ms of sustained voice before we believe it's speech
+            speech = true;
+            (rec as MediaRecorder & { _spoke?: boolean })._spoke = true;
+          }
+        } else {
+          loudStreak = Math.max(0, loudStreak - 1);
         }
         const quietFor = now - lastLoud;
-        if ((speech && quietFor > 1100) || now - t0 > 25_000) {
+        if ((speech && quietFor > 1200) || now - t0 > 25_000) {
           if (rec.state === "recording") rec.stop();
         }
       }, 90);
