@@ -345,6 +345,8 @@ function FireLiveVoice({
   const rateRef = useRef(48_000);
   const inflightRef = useRef(false);
   const captionRef = useRef("");
+  const captionAtRef = useRef(0);
+  const captionCountRef = useRef(0);
   const tickRef = useRef<number | null>(null);
   const submitRef = useRef(onSubmitText);
   submitRef.current = onSubmitText;
@@ -364,9 +366,12 @@ function FireLiveVoice({
     try {
       if (sampleCountRef.current > rateRef.current * 0.5) {
         const blob = buildWav(samplesRef.current, rateRef.current);
+        const sentAt = sampleCountRef.current;
         const { text } = await transcribeVoice(blob);
         if (phaseRef.current === "live" && text.trim()) {
           captionRef.current = text;
+          captionAtRef.current = performance.now();
+          captionCountRef.current = sentAt;
           setCaption(text);
         }
       }
@@ -449,7 +454,11 @@ function FireLiveVoice({
     const takeCount = sampleCountRef.current;
     releaseMic(); // mic is DEAD from this point until the agent has fully answered
     let text = captionRef.current;
-    if (takeCount > rate * 0.4) {
+    // FAST PATH: if the live caption already covers (almost) the whole take, skip
+    // the final transcription round-trip (~1s saved per turn)
+    const captionFresh =
+      text.trim().length > 0 && takeCount - captionCountRef.current < rate * 0.9;
+    if (!captionFresh && takeCount > rate * 0.4) {
       try {
         const blob = buildWav(takeSamples, rate); // complete valid WAV, always
         const r = await transcribeVoice(blob);

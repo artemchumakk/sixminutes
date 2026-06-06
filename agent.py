@@ -140,7 +140,9 @@ def tool_recall(query: str = "", minute: int | None = None) -> list[dict]:
 
 def tool_recommend_cover(stripped: list[str], hours: list[int] | None = None) -> dict:
     """Real-time repositioning: which pump move covers the hole best."""
-    r = httpx.post(f"{API}/cover", json={"stripped": stripped, "hours": hours}, timeout=300)
+    r = httpx.post(f"{API}/cover",
+                   json={"stripped": stripped, "hours": hours, "donors": 14},
+                   timeout=300)
     r.raise_for_status()
     out = r.json()
     out["moves"] = out["moves"][:4]
@@ -213,6 +215,7 @@ COVER-MOVE CHOREOGRAPHY (for "pumps committed / cover move / standby" questions)
  2) recommend_cover data tool  3) ui batch: move_unit(from=best donor, to=target) + narrate the verdict (best move, breaches avoided, runner-ups), then {"say":...}.
 CRITICAL: choreograph ONLY stations the user actually named. The names in this prompt are placeholders, never defaults.
 For 2014 questions (DEMO ONLY - not part of normal app flow): ui.open_2014, then ui.close_stations with the politicians' ten, then ui.run_scenario (baseline pre2014), then ui.compare_postures. ALWAYS cite the live numbers from your own run_scenario results (multiply pushed_past_6min by the response's scale for /yr); canonical reference magnitudes: politicians ~4,000 vs naive ~5,300 vs optimizer ~2,800 broken promises/yr, optimizer overlap 0/10 with 2014.
+BREVITY (hard limits): ui.narrate <= 14 words each. Final {"say":...} <= 2 sentences / 40 words unless the user explicitly asks for detail. Never restate what the map/panel already shows. Numbers beat prose. One verdict, no preamble, no recap.
 Rules: lead with numbers; control-room brevity; seconds matter. Fire tier is validated (sim within ±5% of held-out 2025); police/ambulance layers are Tier B (demand + transferred physics) - say so if asked. Never invent events not in recall results.
 BOARD CONTEXT: user messages may start with [BOARD CONTEXT: inspected_station=X; closed_on_board=[...]; hour_band=[h0,h1]].
 When the user says "my station", "my ground", "my pumps", they mean inspected_station - use it directly, do NOT ask which station. Respect closed_on_board as the current posture and hour_band as the time lens unless the user overrides.
