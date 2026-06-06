@@ -328,8 +328,7 @@ def patrol(speak: bool, accel: int = 60) -> None:
         sim_date = str(day)
         notables = d.filter(
             (pl.col("NumPumpsAttending") >= 4)
-            | (pl.col("FirstPumpArriving_AttendanceTime") > 600)
-            | (pl.col("NumCalls") >= 5))
+            | (pl.col("FirstPumpArriving_AttendanceTime") > 600))
         # narrate up to 3 notables per sim-day
         for r in notables.head(3).iter_rows(named=True):
             sev = "P1" if (r["NumPumpsAttending"] or 0) >= 6 else "P2"
@@ -341,13 +340,52 @@ def patrol(speak: bool, accel: int = 60) -> None:
             if speak and hb % 5 == 0:
                 tts(narrative, play=False)
             hb += 1
-        # hourly-ish chapter summary via Nemotron (every ~8 sim-days ~ 12 wall-min at 60x)
+        # AGENTIC: investigate the day's biggest event (every ~8 sim-days, token-budgeted)
+        if days.index(day) % 8 == 3 and notables.height:
+            big = notables.sort("NumPumpsAttending", descending=True).head(1).to_dicts()[0]
+            try:
+                hist: list[dict] = []
+                assessment = agent_turn(
+                    f"PATROL INVESTIGATION (max 3 tool hops, no ui): {big['IncGeo_WardName']}, "
+                    f"{big['IncGeo_BoroughName']} on {sim_date}: {big['StopCodeDescription']}, "
+                    f"{big['NumPumpsAttending']} pumps, first attendance {big['FirstPumpArriving_AttendanceTime']}s. "
+                    f"Use sql to pull this ward's 2025 incident count and mean attendance, judge whether "
+                    f"this response was normal for the ward, and end with a 2-sentence assessment.", hist)
+                remember("investigation", f"{big['IncGeo_WardName']}, {big['IncGeo_BoroughName']}",
+                         "info", assessment[:600], sim_date)
+            except Exception as e:
+                jlog("error", where="investigate", error=str(e)[:200])
+
+        # AGENTIC: cluster -> autonomous counterfactual experiment on the twin
+        wards_today = notables["IncGeo_WardName"].to_list()
+        clustered = {x for x in wards_today if wards_today.count(x) >= 2}
+        if clustered and days.index(day) % 4 == 1:
+            ward = sorted(clustered)[0]
+            ground = notables.filter(pl.col("IncGeo_WardName") == ward)["IncidentStationGround"].to_list()
+            station = (ground[0] or "").title() if ground else ""
+            try:
+                r = httpx.post(f"{API}/scenario",
+                               json={"pump_delta": {station: 1}, "close": [], "open": []},
+                               timeout=180).json()
+                gain = -float(r.get("ward_deltas", {}).get(ward, 0.0))
+                rec = (f"AUTONOMOUS EXPERIMENT: cluster of notables in {ward} on {sim_date}. "
+                       f"Ran the twin unprompted: one extra pump at {station} changes this ward's mean "
+                       f"response by {gain:+.0f}s. "
+                       + (f"RECOMMEND standby reinforcement at {station}." if gain > 10
+                          else "Posture adequate; no move recommended."))
+                remember("experiment", f"{ward}", "P3" if gain > 10 else "info", rec, sim_date)
+                if speak:
+                    tts(rec, play=False)
+            except Exception as e:
+                jlog("error", where="experiment", error=str(e)[:200])
+
+        # chapter summary via Nemotron (every ~8 sim-days ~ 12 wall-min at 60x)
         if days.index(day) % 8 == 7:
             recent = recall("", minute=None, limit=10)
             try:
                 summary = llm([{"role": "system", "content": "Summarize these control-room events in 2 sentences, control-room style."},
-                               {"role": "user", "content": json.dumps(recent)}], max_tokens=160)
-                remember("chapter", "London", "info", summary, sim_date)
+                               {"role": "user", "content": json.dumps(recent)}], max_tokens=600)
+                remember("chapter", "London", "info", summary[:500], sim_date)
                 if speak:
                     tts(summary, play=False)
             except Exception as e:

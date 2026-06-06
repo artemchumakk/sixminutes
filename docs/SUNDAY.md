@@ -2,7 +2,19 @@
 
 Set an alarm for 10:25. The form takes 10–15 min. Late = rejected.
 
-## 08:00–08:20 — harvest the night
+## 08:00–08:15 — DEPLOY THE NEW BRAIN TO THE BOX (Ghost Operator shipped overnight)
+```bash
+ssh spark 'cd ~/sixwatch && git pull && tmux kill-session -t sixwatch; \
+  tmux new-session -d -s sixwatch -n api "./run_api.sh 2>&1 | tee logs/api.log"; \
+  until curl -s localhost:8095/health | grep -q ok; do sleep 5; done; \
+  tmux new-window -t sixwatch -n patrol "./run_patrol.sh"; echo DEPLOYED'
+# demo dashboard from the box: http://scan-14.local:8095 (or the Mac: localhost:8095)
+```
+Overnight there were TWO sessions: the box (original brain, continuous since Sat 18:20)
+and the Mac (smart brain: investigations + autonomous experiments). BOTH are bounty
+artifacts — submit both log sets.
+
+## 08:15–08:25 — harvest the night
 ```bash
 # is the patrol alive? how big is the session?
 ssh spark 'cd ~/sixwatch && tmux ls; wc -l logs/session_*.jsonl; ls logs/audio | wc -l; \
