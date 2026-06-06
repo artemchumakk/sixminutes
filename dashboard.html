@@ -136,6 +136,7 @@ const API = location.origin;
 const map = L.map("map", { zoomControl:false }).setView([51.495, -0.09], 11);
 L.tileLayer("https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png",
   { attribution:"© OSM © CARTO", maxZoom:18 }).addTo(map);
+map.createPane("stns"); map.getPane("stns").style.zIndex = 620;  // stations above ward polygons -> always clickable
 
 // ---------- state ----------
 const closed = new Set();
@@ -145,7 +146,7 @@ const norm = s => (s||"").toUpperCase().replace(/&/g,"AND").replace(/[.'’]/g,"
 // ---------- stations ----------
 fetch(API+"/stations").then(r=>r.json()).then(st=>{
   st.forEach(s=>{
-    const m = L.circleMarker([s.lat,s.lon],{radius:4+1.7*s.pumps,weight:1.5,color:"#46c2ff",fillColor:"#46c2ff",fillOpacity:.55}).addTo(map);
+    const m = L.circleMarker([s.lat,s.lon],{pane:"stns",radius:4+1.7*s.pumps,weight:1.5,color:"#46c2ff",fillColor:"#46c2ff",fillOpacity:.55}).addTo(map);
     m.bindTooltip(`${s.name} · ${s.pumps} pump${s.pumps>1?"s":""}`,{className:"stn-tip"});
     m.on("click",()=>{ closed.has(s.name)?closed.delete(s.name):closed.add(s.name); paint(); });
     stations[s.name]=m;
@@ -153,7 +154,7 @@ fetch(API+"/stations").then(r=>r.json()).then(st=>{
 });
 fetch(API+"/stations2014").then(r=>r.json()).then(st=>{
   st.forEach(s=>{
-    const m = L.circleMarker([s.lat,s.lon],{radius:7,weight:2,dashArray:"3,3",color:"#9d7bff",fillColor:"#9d7bff",fillOpacity:0});
+    const m = L.circleMarker([s.lat,s.lon],{pane:"stns",radius:7,weight:2,dashArray:"3,3",color:"#9d7bff",fillColor:"#9d7bff",fillOpacity:0});
     m.bindTooltip(`${s.name} · closed Jan 2014`,{className:"stn-tip"});
     m.on("click",()=>{ if(!mode2014) return; closed.has(s.name)?closed.delete(s.name):closed.add(s.name); paint(); });
     ghosts[s.name]=m;
