@@ -41,24 +41,24 @@ export default function Chat({
     if (ws.id === "fire") onRegisterAsk?.((t) => fireRef.current?.ask(t));
   }, [ws.id, onRegisterAsk]);
 
-  const [voiceErr, setVoiceErr] = useState<string | null>(null);
-  const handleVoiceSend = useCallback(
-    async (blob: Blob) => {
-      onToggleVoice(); // back to the composer immediately; the thread takes over
-      try {
-        const { text } = await transcribeVoice(blob);
-        if (text.trim()) fireRef.current?.ask(text, true);
-        else
-          fireRef.current?.note(
-            "🎙 I heard only silence — your Mac may be using a different microphone. Check the input device (System Settings → Sound → Input) and try again."
-          );
-      } catch {
-        fireRef.current?.note("🎙 Transcription failed — is the engine running on :8095?");
-      }
-      window.setTimeout(() => setVoiceErr(null), 4000);
-    },
-    [onToggleVoice]
-  );
+  const [fireAudioPlaying, setFireAudioPlaying] = useState(false);
+  const handleVoiceUtterance = useCallback(async (blob: Blob) => {
+    // hands-free loop: we STAY in voice mode; the loop resumes listening after the answer
+    try {
+      const { text } = await transcribeVoice(blob);
+      if (text.trim()) fireRef.current?.ask(text, true);
+      else
+        fireRef.current?.note(
+          "🎙 I heard only silence — check which microphone Chrome is using (🎙 icon in the address bar)."
+        );
+    } catch {
+      fireRef.current?.note("🎙 Transcription failed — is the engine running on :8095?");
+    }
+  }, []);
+  const handleVoiceExit = useCallback(() => {
+    fireRef.current?.stopAudio();
+    onToggleVoice();
+  }, [onToggleVoice]);
   const scrollRef = useRef<HTMLDivElement>(null);
 
   function addFolder() {
@@ -212,6 +212,7 @@ export default function Chat({
           onAnalysingChange={setFireAnalysing}
           onBusyChange={setFireBusy}
           onMessagesChange={setFireMsgs}
+          onAudioStateChange={setFireAudioPlaying}
         />
         <div
           className={
@@ -220,13 +221,14 @@ export default function Chat({
           }
         >
           <div className="pointer-events-auto mx-auto w-full max-w-3xl">
-            {voiceErr && (
-              <div className="mb-2 w-fit rounded-full border border-neutral-200 bg-white/95 px-3.5 py-1.5 text-[12.5px] text-neutral-500 shadow-sm">
-                {voiceErr}
-              </div>
-            )}
             {voiceActive ? (
-              <FireVoiceBar accent={ws.accent} onSend={handleVoiceSend} onCancel={onToggleVoice} />
+              <FireVoiceLoop
+                accent={ws.accent}
+                busy={fireBusy}
+                audioPlaying={fireAudioPlaying}
+                onUtterance={handleVoiceUtterance}
+                onExit={handleVoiceExit}
+              />
             ) : (
               fireComposer
             )}
@@ -278,71 +280,176 @@ export default function Chat({
   );
 }
 
-/** Real mic capture wearing ynkvch's RecordingBar. Stop = send. */
-function FireVoiceBar({
+/** Hands-free conversational voice: VAD listens -> silence sends -> agent speaks ->
+ *  listening resumes. Mic is deaf while the agent talks (no self-hearing).
+ *  Wears ynkvch's RecordingBar while listening. ■ exits the loop. */
+type VoicePhase = "listening" | "thinking" | "speaking";
+
+function FireVoiceLoop({
   accent,
-  onSend,
-  onCancel,
+  busy,
+  audioPlaying,
+  onUtterance,
+  onExit,
 }: {
   accent: string;
-  onSend: (blob: Blob) => void;
-  onCancel: () => void;
+  busy: boolean;
+  audioPlaying: boolean;
+  onUtterance: (blob: Blob) => void;
+  onExit: () => void;
 }) {
-  const recRef = useRef<MediaRecorder | null>(null);
-  const sendRef = useRef(onSend);
-  const cancelRef = useRef(onCancel);
-  sendRef.current = onSend;
-  cancelRef.current = onCancel;
+  const [phase, setPhase] = useState<VoicePhase>("listening");
   const [err, setErr] = useState(false);
+  const phaseRef = useRef<VoicePhase>("listening");
+  phaseRef.current = phase;
+  const streamRef = useRef<MediaStream | null>(null);
+  const ctxRef = useRef<AudioContext | null>(null);
+  const analyserRef = useRef<AnalyserNode | null>(null);
+  const recRef = useRef<MediaRecorder | null>(null);
+  const meterRef = useRef<number | null>(null);
+  const utterRef = useRef(onUtterance);
+  utterRef.current = onUtterance;
 
-  useEffect(() => {
-    let alive = true;
-    let stream: MediaStream | null = null;
-    const chunks: BlobPart[] = [];
-    navigator.mediaDevices
-      .getUserMedia({ audio: true })
-      .then((s) => {
-        if (!alive) {
-          s.getTracks().forEach((t) => t.stop());
+  const stopMeter = () => {
+    if (meterRef.current) window.clearInterval(meterRef.current);
+    meterRef.current = null;
+  };
+
+  const startListening = async () => {
+    try {
+      if (!streamRef.current) {
+        streamRef.current = await navigator.mediaDevices.getUserMedia({
+          audio: { echoCancellation: true, noiseSuppression: true },
+        });
+        const Ctx = window.AudioContext ?? (window as unknown as { webkitAudioContext: typeof AudioContext }).webkitAudioContext;
+        ctxRef.current = new Ctx();
+        const src = ctxRef.current.createMediaStreamSource(streamRef.current);
+        analyserRef.current = ctxRef.current.createAnalyser();
+        analyserRef.current.fftSize = 1024;
+        src.connect(analyserRef.current);
+      }
+      await ctxRef.current?.resume();
+      setPhase("listening");
+      const chunks: BlobPart[] = [];
+      const rec = new MediaRecorder(streamRef.current);
+      recRef.current = rec;
+      rec.ondataavailable = (e) => {
+        if (e.data.size) chunks.push(e.data);
+      };
+      rec.onstop = () => {
+        stopMeter();
+        const blob = new Blob(chunks, { type: rec.mimeType || "audio/webm" });
+        const spoke = (rec as MediaRecorder & { _spoke?: boolean })._spoke;
+        if (spoke && blob.size > 1500) {
+          setPhase("thinking");
+          utterRef.current(blob);
+        } else if (phaseRef.current === "listening") {
+          void startListening(); // heard nothing real -> keep listening
+        }
+      };
+      rec.start();
+
+      // --- VAD: calibrate noise floor, then speech-end on ~1.1s of quiet ---
+      const buf = new Uint8Array(analyserRef.current!.fftSize);
+      const t0 = performance.now();
+      let floor = 4;
+      let speech = false;
+      let lastLoud = performance.now();
+      meterRef.current = window.setInterval(() => {
+        analyserRef.current!.getByteTimeDomainData(buf);
+        let sum = 0;
+        for (let i = 0; i < buf.length; i++) {
+          const d = buf[i] - 128;
+          sum += d * d;
+        }
+        const rms = Math.sqrt(sum / buf.length);
+        const now = performance.now();
+        if (now - t0 < 350) {
+          floor = Math.max(floor, rms * 1.4);
           return;
         }
-        stream = s;
-        const rec = new MediaRecorder(s);
-        recRef.current = rec;
-        rec.ondataavailable = (e) => {
-          if (e.data.size) chunks.push(e.data);
-        };
-        rec.onstop = () => {
-          s.getTracks().forEach((t) => t.stop());
-          const blob = new Blob(chunks, { type: rec.mimeType || "audio/webm" });
-          if (blob.size > 800) sendRef.current(blob);
-          else cancelRef.current();
-        };
-        rec.start();
-      })
-      .catch(() => setErr(true));
+        const thr = Math.max(6, floor * 2.0);
+        if (rms > thr) {
+          (rec as MediaRecorder & { _spoke?: boolean })._spoke = true;
+          speech = true;
+          lastLoud = now;
+        }
+        const quietFor = now - lastLoud;
+        if ((speech && quietFor > 1100) || now - t0 > 25_000) {
+          if (rec.state === "recording") rec.stop();
+        }
+      }, 90);
+    } catch {
+      setErr(true);
+    }
+  };
+
+  // boot once; teardown on exit
+  useEffect(() => {
+    void startListening();
     return () => {
-      alive = false;
+      stopMeter();
       try {
-        if (recRef.current?.state === "recording") recRef.current.stop();
-        stream?.getTracks().forEach((t) => t.stop());
+        if (recRef.current?.state === "recording") {
+          recRef.current.onstop = null;
+          recRef.current.stop();
+        }
       } catch {
         /* already stopped */
       }
+      streamRef.current?.getTracks().forEach((t) => t.stop());
+      void ctxRef.current?.close();
     };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
+
+  // after the agent finishes (no busy, no audio) -> resume listening
+  useEffect(() => {
+    if (phase === "listening") return;
+    if (audioPlaying) {
+      setPhase("speaking");
+      return;
+    }
+    if (busy) {
+      setPhase("thinking");
+      return;
+    }
+    const t = window.setTimeout(() => {
+      if (phaseRef.current !== "listening") void startListening();
+    }, 800);
+    return () => window.clearTimeout(t);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [busy, audioPlaying, phase]);
 
   if (err) {
     return (
       <div className="flex items-center justify-between rounded-[26px] border border-neutral-200 bg-white px-4 py-3 text-[13.5px] text-neutral-500 shadow-[0_1px_2px_rgba(0,0,0,0.04)]">
         Microphone unavailable — check browser permissions.
-        <button onClick={onCancel} className="rounded-lg px-2 py-1 text-neutral-600 hover:bg-neutral-100">
+        <button onClick={onExit} className="rounded-lg px-2 py-1 text-neutral-600 hover:bg-neutral-100">
           back
         </button>
       </div>
     );
   }
-  return <RecordingBar accent={accent} onStop={() => recRef.current?.stop()} />;
+
+  if (phase === "listening") {
+    return <RecordingBar accent={accent} onStop={onExit} />;
+  }
+  return (
+    <div className="flex items-center gap-3 rounded-[26px] border border-neutral-200 bg-white px-4 py-3 shadow-[0_1px_2px_rgba(0,0,0,0.04)]">
+      <div className="flex-1 text-[13.5px] text-neutral-500">
+        {phase === "speaking" ? "Speaking…" : "Thinking…"}
+        <span className="caret" />
+      </div>
+      <button
+        onClick={onExit}
+        title="End voice"
+        className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-neutral-900 text-white transition-colors hover:bg-neutral-700"
+      >
+        <span className="h-3 w-3 rounded-[3px] bg-white" />
+      </button>
+    </div>
+  );
 }
 
 function Bubble({ msg, ws }: { msg: ChatMessage; ws: Workspace }) {

@@ -399,10 +399,29 @@ def ask(a: Ask) -> dict:
                 ctx.append(f"hour_band={a.context['hours']}")
             if ctx:
                 text = f"[BOARD CONTEXT: {'; '.join(ctx)}] {a.text}"
+        cmd_start = len(UI_COMMANDS)
         answer = brigade.agent_turn(text, ASK_HISTORY)
+        window = UI_COMMANDS[cmd_start:]
         # ensure the final answer always lands on screen even if the model forgot ui.narrate
-        if not any(c.get("type") == "narrate" and c.get("final") for c in UI_COMMANDS[-8:]):
+        if not any(c.get("type") == "narrate" and c.get("final") for c in window[-8:]):
             ui_emit({"type": "narrate", "text": answer, "final": True})
+        # voice asks must SPEAK the final answer (skip if a narration already said it)
+        if a.speak and answer:
+            narrs = [c.get("text", "") for c in window if c.get("type") == "narrate"]
+            already_spoken = (
+                any(c.get("type") == "audio" for c in window)
+                and bool(narrs)
+                and narrs[-1][:60] == answer[:60]
+            )
+            if not already_spoken:
+                def _speak_final(txt: str) -> None:
+                    try:
+                        out = brigade.tts(txt, play=False)
+                        if out:
+                            ui_emit({"type": "audio", "url": f"/audio/{out.name}"})
+                    except Exception:
+                        pass
+                threading.Thread(target=_speak_final, args=(answer[:600],), daemon=True).start()
         return {"answer": answer}
     finally:
         ASK_BUSY.release()

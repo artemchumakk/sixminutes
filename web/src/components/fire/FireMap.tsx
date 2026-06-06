@@ -30,6 +30,8 @@ export interface FireMapHandle {
   clearChat: () => void;
   /** drop a system-style agent note into the thread without invoking the LLM */
   note: (text: string) => void;
+  /** silence any playing TTS immediately */
+  stopAudio: () => void;
 }
 
 export interface FireMsg {
@@ -56,8 +58,12 @@ const FireMap = forwardRef<
     onAnalysingChange?: (analysing: boolean) => void;
     onBusyChange?: (busy: boolean) => void;
     onMessagesChange?: (msgs: FireMsg[]) => void;
+    onAudioStateChange?: (playing: boolean) => void;
   }
->(function FireMap({ accent, onAnalysingChange, onBusyChange, onMessagesChange }, handleRef) {
+>(function FireMap(
+  { accent, onAnalysingChange, onBusyChange, onMessagesChange, onAudioStateChange },
+  handleRef
+) {
   const divRef = useRef<HTMLDivElement>(null);
   const mapRef = useRef<L.Map | null>(null);
   const stationsRef = useRef<Record<string, L.CircleMarker>>({});
@@ -239,8 +245,13 @@ const FireMap = forwardRef<
         case "audio":
           if (c.url) {
             voiceAudio.current?.pause();
-            voiceAudio.current = new Audio(`${API}${c.url}`);
-            voiceAudio.current.play().catch(() => undefined);
+            const a = new Audio(`${API}${c.url}`);
+            voiceAudio.current = a;
+            a.onplay = () => onAudioStateChange?.(true);
+            a.onended = () => onAudioStateChange?.(false);
+            a.onerror = () => onAudioStateChange?.(false);
+            a.onpause = () => onAudioStateChange?.(false);
+            a.play().catch(() => onAudioStateChange?.(false));
           }
           break;
         case "narrate":
@@ -348,7 +359,12 @@ const FireMap = forwardRef<
   const note = useCallback((text: string) => {
     setMsgs((m) => [...m.slice(-7), { id: ++msgId.current, role: "agent", text }]);
   }, []);
-  useImperativeHandle(handleRef, () => ({ ask, clearChat, note }), [ask, clearChat, note]);
+  const stopAudio = useCallback(() => {
+    voiceAudio.current?.pause();
+    onAudioStateChange?.(false);
+  }, [onAudioStateChange]);
+  useImperativeHandle(handleRef, () => ({ ask, clearChat, note, stopAudio }),
+    [ask, clearChat, note, stopAudio]);
   useEffect(() => stopBusPolling, [stopBusPolling]);
   useEffect(() => {
     onMessagesChange?.(msgs);
