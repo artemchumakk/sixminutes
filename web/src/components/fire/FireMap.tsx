@@ -24,7 +24,13 @@ const norm = (s: string) =>
 
 /** The validated fire twin as an analytical workspace: light-mode map + analyst panel.
  *  Click stations to close them; the latest 12 months re-simulate automatically. */
-export default function FireMap({ accent }: { accent: string }) {
+export default function FireMap({
+  accent,
+  onAnalysingChange,
+}: {
+  accent: string;
+  onAnalysingChange?: (analysing: boolean) => void;
+}) {
   const divRef = useRef<HTMLDivElement>(null);
   const mapRef = useRef<L.Map | null>(null);
   const stationsRef = useRef<Record<string, L.CircleMarker>>({});
@@ -182,6 +188,10 @@ export default function FireMap({ accent }: { accent: string }) {
 
   const analysing = closed.length > 0;
 
+  useEffect(() => {
+    onAnalysingChange?.(analysing);
+  }, [analysing, onAnalysingChange]);
+
   return (
     <div className="absolute inset-0">
       <div ref={divRef} className="h-full w-full" />
@@ -200,7 +210,7 @@ export default function FireMap({ accent }: { accent: string }) {
 
       {/* analytics: appears only once an analysis is live */}
       {analysing && (
-        <div className="absolute bottom-24 right-3 top-14 z-[1100] w-[320px]">
+        <div className="absolute bottom-3 right-3 top-14 z-[1100] w-[320px]">
           <FirePanel
             accent={accent}
             baseline={baseline}

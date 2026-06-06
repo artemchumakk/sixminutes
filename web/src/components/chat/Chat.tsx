@@ -24,6 +24,7 @@ export default function Chat({
   const [busy, setBusy] = useState(false);
   const [folders, setFolders] = useState<string[]>(["London Bridge Hospital"]);
   const [activeFolder, setActiveFolder] = useState("London Bridge Hospital");
+  const [fireAnalysing, setFireAnalysing] = useState(false);
   const scrollRef = useRef<HTMLDivElement>(null);
 
   function addFolder() {
@@ -103,8 +104,13 @@ export default function Chat({
   if (ws.id === "fire") {
     return (
       <div className="relative h-full w-full">
-        <FireMap accent={ws.accent} />
-        <div className="pointer-events-none absolute bottom-4 left-0 right-0 z-[1100] px-4">
+        <FireMap accent={ws.accent} onAnalysingChange={setFireAnalysing} />
+        <div
+          className={
+            "pointer-events-none absolute bottom-4 left-0 z-[1100] px-4 transition-[right] duration-300 " +
+            (fireAnalysing ? "right-[336px]" : "right-0")
+          }
+        >
           <div className="pointer-events-auto mx-auto w-full max-w-3xl">{composer}</div>
         </div>
       </div>
