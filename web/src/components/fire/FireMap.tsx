@@ -28,6 +28,8 @@ import FirePanel from "./FirePanel";
 export interface FireMapHandle {
   ask: (text: string, speak?: boolean) => void;
   clearChat: () => void;
+  /** drop a system-style agent note into the thread without invoking the LLM */
+  note: (text: string) => void;
 }
 
 export interface FireMsg {
@@ -335,7 +337,7 @@ const FireMap = forwardRef<
           )
         );
       } finally {
-        window.setTimeout(stopBusPolling, 3000);
+        window.setTimeout(stopBusPolling, 8000); // generous: final-verdict TTS lags the answer
         onBusyChange?.(false);
       }
     },
@@ -343,7 +345,10 @@ const FireMap = forwardRef<
   );
 
   const clearChat = useCallback(() => setMsgs([]), []);
-  useImperativeHandle(handleRef, () => ({ ask, clearChat }), [ask, clearChat]);
+  const note = useCallback((text: string) => {
+    setMsgs((m) => [...m.slice(-7), { id: ++msgId.current, role: "agent", text }]);
+  }, []);
+  useImperativeHandle(handleRef, () => ({ ask, clearChat, note }), [ask, clearChat, note]);
   useEffect(() => stopBusPolling, [stopBusPolling]);
   useEffect(() => {
     onMessagesChange?.(msgs);

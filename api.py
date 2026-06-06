@@ -429,8 +429,11 @@ def voice_transcribe(file: UploadFile = File(...)) -> dict:
         timeout=60,
     )
     if r.status_code != 200:
+        print(f"[voice] EL STT {r.status_code}: {r.text[:200]}", flush=True)
         raise HTTPException(502, f"transcription failed: {r.status_code}")
-    return {"text": r.json().get("text", "")}
+    text = r.json().get("text", "")
+    print(f"[voice] {len(data)}B audio -> {len(text)} chars: {text[:80]!r}", flush=True)
+    return {"text": text}
 
 
 @app.get("/session/tail")

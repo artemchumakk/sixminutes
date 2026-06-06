@@ -48,9 +48,12 @@ export default function Chat({
       try {
         const { text } = await transcribeVoice(blob);
         if (text.trim()) fireRef.current?.ask(text, true);
-        else setVoiceErr("Didn't catch that — try again.");
+        else
+          fireRef.current?.note(
+            "🎙 I heard only silence — your Mac may be using a different microphone. Check the input device (System Settings → Sound → Input) and try again."
+          );
       } catch {
-        setVoiceErr("Transcription failed — is the engine running?");
+        fireRef.current?.note("🎙 Transcription failed — is the engine running on :8095?");
       }
       window.setTimeout(() => setVoiceErr(null), 4000);
     },
