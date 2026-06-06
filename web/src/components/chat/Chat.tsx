@@ -14,10 +14,12 @@ export default function Chat({
   ws,
   voiceActive,
   onToggleVoice,
+  onRegisterAsk,
 }: {
   ws: Workspace;
   voiceActive: boolean;
   onToggleVoice: () => void;
+  onRegisterAsk?: (fn: (text: string) => void) => void;
 }) {
   const [messages, setMessages] = useState<ChatMessage[]>([]);
   const [input, setInput] = useState("");
@@ -33,6 +35,10 @@ export default function Chat({
   useEffect(() => {
     fireScrollRef.current?.scrollTo({ top: fireScrollRef.current.scrollHeight, behavior: "smooth" });
   }, [fireMsgs]);
+
+  useEffect(() => {
+    if (ws.id === "fire") onRegisterAsk?.((t) => fireRef.current?.ask(t));
+  }, [ws.id, onRegisterAsk]);
   const scrollRef = useRef<HTMLDivElement>(null);
 
   function addFolder() {
@@ -173,6 +179,10 @@ export default function Chat({
         onSelectFolder={setActiveFolder}
         onAddFolder={addFolder}
         header={transcript}
+        hideAttach
+        hideFolder
+        hideMic
+        staticModel
       />
     );
     return (

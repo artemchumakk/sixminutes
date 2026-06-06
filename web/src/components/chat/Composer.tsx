@@ -19,6 +19,10 @@ export default function Composer({
   onSelectFolder,
   onAddFolder,
   header,
+  hideAttach,
+  hideFolder,
+  hideMic,
+  staticModel,
 }: {
   value: string;
   onChange: (v: string) => void;
@@ -34,6 +38,11 @@ export default function Composer({
   onAddFolder: () => void;
   /** optional content rendered inside the bar, above the input (e.g. a transcript) */
   header?: React.ReactNode;
+  /** workspace-scoped trims (all default off -> original render) */
+  hideAttach?: boolean;
+  hideFolder?: boolean;
+  hideMic?: boolean;
+  staticModel?: boolean;
 }) {
   const ref = useRef<HTMLTextAreaElement>(null);
   const [folderOpen, setFolderOpen] = useState(false);
@@ -83,9 +92,12 @@ export default function Composer({
         <div className="flex items-center justify-between px-2.5 pb-2.5 pt-1">
           {/* left: attach + folder */}
           <div className="flex items-center gap-1">
-            <IconBtn title="Attach">
-              <Plus size={18} />
-            </IconBtn>
+            {!hideAttach && (
+              <IconBtn title="Attach">
+                <Plus size={18} />
+              </IconBtn>
+            )}
+            {!hideFolder && (
             <div className="relative">
               <FootPill onClick={() => setFolderOpen((o) => !o)} active={folderOpen}>
                 <Folder size={15} className="text-neutral-500" />
@@ -128,10 +140,17 @@ export default function Composer({
                 </>
               )}
             </div>
+            )}
           </div>
 
           {/* right: model + send + mic */}
           <div className="flex items-center gap-1.5">
+            {staticModel ? (
+              <div className="flex items-center gap-1.5 px-2 py-1.5 text-[13px]">
+                <Nvidia size={18} />
+                <span className="text-neutral-700">Nemotron</span>
+              </div>
+            ) : (
             <div className="relative">
               <button
                 onClick={() => setModelOpen((o) => !o)}
@@ -176,6 +195,7 @@ export default function Composer({
                 </>
               )}
             </div>
+            )}
 
             <button
               onClick={onSubmit}
@@ -188,9 +208,11 @@ export default function Composer({
             >
               <ArrowUp size={17} />
             </button>
-            <IconBtn title="Voice" onClick={onToggleVoice} active={voiceActive}>
-              <Mic size={18} />
-            </IconBtn>
+            {!hideMic && (
+              <IconBtn title="Voice" onClick={onToggleVoice} active={voiceActive}>
+                <Mic size={18} />
+              </IconBtn>
+            )}
           </div>
         </div>
       </div>

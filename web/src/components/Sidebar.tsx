@@ -30,20 +30,33 @@ const INITIAL_WORKSPACES: WorkspaceFolderData[] = [
   },
 ];
 
+// fire workspace: real demo accelerators — each one is sent to the agent verbatim
+const FIRE_QUICK_ASKS = [
+  "Close Biggin Hill — who gets hurt?",
+  "Best cover move if Croydon's pumps commit tonight",
+  "Soho closure: night vs day",
+  "Which buildings waste the most time on false alarms?",
+  "How do I know your simulations are right?",
+  "Reset the board",
+];
+
 export default function Sidebar({
   ws,
   onNewChat,
   onSearch,
   onVoice,
   onExit,
+  onQuickAsk,
 }: {
   ws: Workspace;
   onNewChat: () => void;
   onSearch: () => void;
   onVoice: () => void;
   onExit: () => void;
+  onQuickAsk?: (text: string) => void;
 }) {
   const [workspaces, setWorkspaces] = useState<WorkspaceFolderData[]>(INITIAL_WORKSPACES);
+  const fire = ws.id === "fire";
 
   function addWorkspace() {
     const n = workspaces.filter((w) => w.name.startsWith("New workspace")).length + 1;
@@ -58,7 +71,13 @@ export default function Sidebar({
       <div className="flex-1 overflow-y-auto px-2.5 py-3">
         <div className="mb-2 flex w-full items-center justify-between rounded-full bg-neutral-100 px-3 py-1.5 text-[14px] font-medium text-neutral-700">
           <span className="flex items-center gap-2">
-            <RedCross size={16} className="text-red-600" />
+            {fire ? (
+              <span className="text-[15px] leading-none" style={{ color: ws.accent }}>
+                {ws.icon}
+              </span>
+            ) : (
+              <RedCross size={16} className="text-red-600" />
+            )}
             {ws.short}
           </span>
           <button
@@ -74,36 +93,59 @@ export default function Sidebar({
           <Item icon={<NewChat size={18} />} onClick={onNewChat}>
             New chat
           </Item>
-          <Item icon={<Search size={18} />} onClick={onSearch}>
-            Search
-          </Item>
-          <Item icon={<Waveform size={18} />} onClick={onVoice}>
-            Voice agent
-          </Item>
+          {!fire && (
+            <Item icon={<Search size={18} />} onClick={onSearch}>
+              Search
+            </Item>
+          )}
+          {!fire && (
+            <Item icon={<Waveform size={18} />} onClick={onVoice}>
+              Voice agent
+            </Item>
+          )}
         </nav>
 
-        <Section>Workspaces</Section>
-        <nav className="flex flex-col gap-0.5">
-          {workspaces.map((w, i) => (
-            <WorkspaceFolder key={w.name} data={w} onDelete={() => deleteWorkspace(i)} />
-          ))}
-          <Item icon={<Plus size={18} />} onClick={addWorkspace}>
-            Add workspace
-          </Item>
-        </nav>
+        {!fire && (
+          <>
+            <Section>Workspaces</Section>
+            <nav className="flex flex-col gap-0.5">
+              {workspaces.map((w, i) => (
+                <WorkspaceFolder key={w.name} data={w} onDelete={() => deleteWorkspace(i)} />
+              ))}
+              <Item icon={<Plus size={18} />} onClick={addWorkspace}>
+                Add workspace
+              </Item>
+            </nav>
+          </>
+        )}
 
-        <Section>Recent</Section>
-        <nav className="flex flex-col gap-0.5">
-          <PlainItem>Close Wembley NW base</PlainItem>
-          <PlainItem>Strike-day posture · NE London</PlainItem>
-          <PlainItem>Rank bases by closure damage</PlainItem>
-          <PlainItem>Croydon C2 tail analysis</PlainItem>
-          <PlainItem>Pre-position unit at Greenwich</PlainItem>
-          <PlainItem>Storm scenario · Thames flood</PlainItem>
-          <PlainItem>Edmonton coverage hole</PlainItem>
-          <PlainItem>Move pump from Waterloo HQ</PlainItem>
-          <PlainItem>Fleet sizing experiment</PlainItem>
-        </nav>
+        {fire ? (
+          <>
+            <Section>Suggested analyses</Section>
+            <nav className="flex flex-col gap-0.5">
+              {FIRE_QUICK_ASKS.map((q) => (
+                <PlainItem key={q} onClick={() => onQuickAsk?.(q)}>
+                  {q}
+                </PlainItem>
+              ))}
+            </nav>
+          </>
+        ) : (
+          <>
+            <Section>Recent</Section>
+            <nav className="flex flex-col gap-0.5">
+              <PlainItem>Close Wembley NW base</PlainItem>
+              <PlainItem>Strike-day posture · NE London</PlainItem>
+              <PlainItem>Rank bases by closure damage</PlainItem>
+              <PlainItem>Croydon C2 tail analysis</PlainItem>
+              <PlainItem>Pre-position unit at Greenwich</PlainItem>
+              <PlainItem>Storm scenario · Thames flood</PlainItem>
+              <PlainItem>Edmonton coverage hole</PlainItem>
+              <PlainItem>Move pump from Waterloo HQ</PlainItem>
+              <PlainItem>Fleet sizing experiment</PlainItem>
+            </nav>
+          </>
+        )}
       </div>
 
     </aside>
@@ -180,9 +222,12 @@ function SubItem({ children, live }: { children: ReactNode; live?: boolean }) {
   );
 }
 
-function PlainItem({ children }: { children: ReactNode }) {
+function PlainItem({ children, onClick }: { children: ReactNode; onClick?: () => void }) {
   return (
-    <button className="flex w-full items-center rounded-lg px-2.5 py-[7px] text-left text-[14px] text-neutral-700 transition-colors hover:bg-neutral-100">
+    <button
+      onClick={onClick}
+      className="flex w-full items-center rounded-lg px-2.5 py-[7px] text-left text-[14px] text-neutral-700 transition-colors hover:bg-neutral-100"
+    >
       <span className="truncate">{children}</span>
     </button>
   );
