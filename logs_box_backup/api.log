@@ -1,0 +1,10 @@
+INFO:     Started server process [1019039]
+INFO:     Waiting for application startup.
+INFO:     Application startup complete.
+INFO:     Uvicorn running on http://0.0.0.0:8095 (Press CTRL+C to quit)
+[world] 300,208 incidents · 102 stations · 142 pumps · loaded in 12.2s
+[sim] 40,000 incidents in 0.75s = 53,291 incidents/sec (queued waits on 0.2% of calls)
+INFO:     127.0.0.1:45238 - "GET /health HTTP/1.1" 200 OK
+INFO:     127.0.0.1:45240 - "GET /health HTTP/1.1" 200 OK
+INFO:     127.0.0.1:45260 - "GET /health HTTP/1.1" 200 OK
+INFO:     127.0.0.1:45264 - "GET /health HTTP/1.1" 200 OK
