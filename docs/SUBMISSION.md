@@ -43,9 +43,11 @@ how LFB actually operates daily; today they're made by gut feel.
 
 The interface is an operations dashboard (close stations on a map, watch a year of
 London re-dispatch in ~1 second) and "Brigade Watch" — a Nemotron agent with
-ElevenLabs voice in/out that operates the simulator by conversation, runs SQL over
-the full archive, and has been on persistent patrol since Saturday evening with a
-structured event memory (session logs in repo; ask it what happened at minute 14).
+ElevenLabs voice in/out that operates the simulator AND the dashboard itself by
+conversation (the Ghost Operator: ask it something and the wall choreographs),
+runs SQL over the full archive, and patrols autonomously with a structured event
+memory — investigating anomalies and running unprompted counterfactual experiments.
+[SUNDAY: insert live session stats — start time, hours logged, event count]
 
 ## NVIDIA / Spark story (form field)
 
@@ -62,7 +64,7 @@ anywhere in the path.
 ## Bounty (ElevenLabs / Nemotron)
 
 Brigade Watch: Nemotron agent, ElevenLabs STT+TTS both directions, persistent
-session started Sat 18:20 (13h+ logs: logs/session_*.jsonl + logs/audio/*.mp3),
+persistent session logs (logs/session_*.jsonl + audio artifacts) — [SUNDAY: real stats],
 structured anomaly registry → exact recall of any earlier minute on live questioning.
 
 ## Run it
