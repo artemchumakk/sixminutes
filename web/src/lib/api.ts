@@ -76,6 +76,31 @@ export async function fetchStationDetail(name: string): Promise<StationDetail> {
   return r.json();
 }
 
+export interface UiCommand {
+  id: number;
+  type: string;
+  text?: string;
+  names?: string[];
+  name?: string;
+  url?: string;
+}
+
+export async function askAgent(text: string): Promise<{ answer?: string; detail?: string; status: number }> {
+  const r = await fetch(`${API}/ask`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ text, speak: false }),
+  });
+  const body = await r.json().catch(() => ({}));
+  return { ...body, status: r.status };
+}
+
+export async function fetchCommands(since: number): Promise<{ next: number; commands: UiCommand[] }> {
+  const r = await fetch(`${API}/ui/commands?since=${since}`);
+  if (!r.ok) throw new Error(`commands: ${r.status}`);
+  return r.json();
+}
+
 export async function runScenario(close: string[], hours: HourBand): Promise<ScenarioResult> {
   const r = await fetch(`${API}/scenario`, {
     method: "POST",

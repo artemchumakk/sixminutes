@@ -5,7 +5,7 @@ import { cx } from "../ui/primitives";
 import Composer from "./Composer";
 import ResultCard from "./ResultCard";
 import { RecordingBar, SpeakingOrb } from "./VoiceMode";
-import FireMap from "../fire/FireMap";
+import FireMap, { type FireMapHandle } from "../fire/FireMap";
 
 let idc = 0;
 const nid = () => `m${++idc}`;
@@ -25,6 +25,8 @@ export default function Chat({
   const [folders, setFolders] = useState<string[]>(["London Bridge Hospital"]);
   const [activeFolder, setActiveFolder] = useState("London Bridge Hospital");
   const [fireAnalysing, setFireAnalysing] = useState(false);
+  const [fireBusy, setFireBusy] = useState(false);
+  const fireRef = useRef<FireMapHandle>(null);
   const scrollRef = useRef<HTMLDivElement>(null);
 
   function addFolder() {
@@ -102,16 +104,42 @@ export default function Chat({
   // ---- fire workspace: full-bleed twin; composer floats over the map ----
   // (composer component itself untouched, per migration plan)
   if (ws.id === "fire") {
+    const fireComposer = (
+      <Composer
+        value={input}
+        onChange={setInput}
+        onSubmit={() => {
+          const t = input.trim();
+          if (!t || fireBusy) return;
+          setInput("");
+          fireRef.current?.ask(t);
+        }}
+        ws={ws}
+        onToggleVoice={onToggleVoice}
+        voiceActive={voiceActive}
+        busy={fireBusy}
+        autoFocus
+        folders={folders}
+        activeFolder={activeFolder}
+        onSelectFolder={setActiveFolder}
+        onAddFolder={addFolder}
+      />
+    );
     return (
       <div className="relative h-full w-full">
-        <FireMap accent={ws.accent} onAnalysingChange={setFireAnalysing} />
+        <FireMap
+          ref={fireRef}
+          accent={ws.accent}
+          onAnalysingChange={setFireAnalysing}
+          onBusyChange={setFireBusy}
+        />
         <div
           className={
             "pointer-events-none absolute bottom-4 left-0 z-[1100] px-4 transition-[right] duration-300 " +
             (fireAnalysing ? "right-[336px]" : "right-0")
           }
         >
-          <div className="pointer-events-auto mx-auto w-full max-w-3xl">{composer}</div>
+          <div className="pointer-events-auto mx-auto w-full max-w-3xl">{fireComposer}</div>
         </div>
       </div>
     );

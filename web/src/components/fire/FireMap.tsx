@@ -1,8 +1,17 @@
-import { useCallback, useEffect, useRef, useState } from "react";
+import {
+  forwardRef,
+  useCallback,
+  useEffect,
+  useImperativeHandle,
+  useRef,
+  useState,
+} from "react";
 import L from "leaflet";
 import "leaflet/dist/leaflet.css";
 import {
+  askAgent,
   fetchBaseline,
+  fetchCommands,
   fetchStationDetail,
   fetchStations,
   fetchWardsGeo,
@@ -11,8 +20,20 @@ import {
   type HourBand,
   type ScenarioResult,
   type StationDetail,
+  type UiCommand,
 } from "../../lib/api";
 import FirePanel from "./FirePanel";
+
+export interface FireMapHandle {
+  ask: (text: string) => void;
+}
+
+interface FireMsg {
+  id: number;
+  role: "user" | "agent";
+  text: string;
+  pending?: boolean;
+}
 
 const norm = (s: string) =>
   (s || "")
@@ -23,14 +44,15 @@ const norm = (s: string) =>
     .trim();
 
 /** The validated fire twin as an analytical workspace: light-mode map + analyst panel.
- *  Click stations to close them; the latest 12 months re-simulate automatically. */
-export default function FireMap({
-  accent,
-  onAnalysingChange,
-}: {
-  accent: string;
-  onAnalysingChange?: (analysing: boolean) => void;
-}) {
+ *  Click stations to close them — or ask the agent, which drives this same map. */
+const FireMap = forwardRef<
+  FireMapHandle,
+  {
+    accent: string;
+    onAnalysingChange?: (analysing: boolean) => void;
+    onBusyChange?: (busy: boolean) => void;
+  }
+>(function FireMap({ accent, onAnalysingChange, onBusyChange }, handleRef) {
   const divRef = useRef<HTMLDivElement>(null);
   const mapRef = useRef<L.Map | null>(null);
   const stationsRef = useRef<Record<string, L.CircleMarker>>({});
@@ -45,6 +67,10 @@ export default function FireMap({
   const [result, setResult] = useState<ScenarioResult | null>(null);
   const [running, setRunning] = useState(false);
   const [station, setStation] = useState<StationDetail | null>(null);
+  const [msgs, setMsgs] = useState<FireMsg[]>([]);
+  const msgId = useRef(0);
+  const busCursor = useRef<number | null>(null);
+  const busTimer = useRef<number | null>(null);
 
   const paintStations = useCallback(() => {
     Object.entries(stationsRef.current).forEach(([name, m]) => {
@@ -186,6 +212,120 @@ export default function FireMap({
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
+  // ---- Ghost Operator: the agent drives THIS map ---------------------------
+  const setClosedSet = useCallback(
+    (updater: (prev: Set<string>) => Set<string>) => {
+      closedRef.current = updater(closedRef.current);
+      setClosed([...closedRef.current]);
+      paintStations();
+    },
+    [paintStations]
+  );
+
+  const execCommand = useCallback(
+    (c: UiCommand) => {
+      const map = mapRef.current;
+      switch (c.type) {
+        case "narrate":
+          if (c.text) {
+            setMsgs((m) =>
+              m.map((x, i) => (i === m.length - 1 && x.role === "agent" ? { ...x, text: c.text! } : x))
+            );
+          }
+          break;
+        case "reset":
+          setClosedSet(() => new Set());
+          paintWards({});
+          setResult(null);
+          break;
+        case "close_stations":
+          setClosedSet((prev) => new Set([...prev, ...(c.names ?? [])]));
+          break;
+        case "run_scenario":
+          void run();
+          break;
+        case "focus_ward": {
+          const p = wardsRef.current[norm(c.name ?? "")];
+          const center = p && "getBounds" in p ? (p as L.Polygon).getBounds().getCenter() : null;
+          if (center && map) map.flyTo(center, 13, { duration: 1.3 });
+          break;
+        }
+        case "focus_station": {
+          const m = stationsRef.current[c.name ?? ""];
+          if (m && map) map.flyTo(m.getLatLng(), 13, { duration: 1.3 });
+          break;
+        }
+        default:
+          break; // 2014/compare verbs live on the wall; harmless to skip here
+      }
+    },
+    [paintWards, run, setClosedSet]
+  );
+
+  const stopBusPolling = useCallback(() => {
+    if (busTimer.current) {
+      window.clearInterval(busTimer.current);
+      busTimer.current = null;
+    }
+  }, []);
+
+  const startBusPolling = useCallback(() => {
+    stopBusPolling();
+    busTimer.current = window.setInterval(async () => {
+      try {
+        if (busCursor.current === null) return;
+        const d = await fetchCommands(busCursor.current);
+        busCursor.current = d.next;
+        d.commands.forEach((c, i) => window.setTimeout(() => execCommand(c), i * 450));
+      } catch {
+        /* poller self-heals next tick */
+      }
+    }, 600);
+  }, [execCommand, stopBusPolling]);
+
+  const ask = useCallback(
+    async (text: string) => {
+      const t = text.trim();
+      if (!t) return;
+      onBusyChange?.(true);
+      setMsgs((m) => [
+        ...m.slice(-6),
+        { id: ++msgId.current, role: "user", text: t },
+        { id: ++msgId.current, role: "agent", text: "", pending: true },
+      ]);
+      try {
+        const tip = await fetchCommands(999_999_999);
+        busCursor.current = tip.next;
+        startBusPolling();
+        const res = await askAgent(t);
+        const final =
+          res.status === 429
+            ? "Hold on — I'm mid-analysis. Ask again in a moment."
+            : res.answer || res.detail || "…";
+        window.setTimeout(() => {
+          setMsgs((m) =>
+            m.map((x, i) => (i === m.length - 1 && x.role === "agent" ? { ...x, text: final, pending: false } : x))
+          );
+        }, 900); // let trailing narrations land first
+      } catch {
+        setMsgs((m) =>
+          m.map((x, i) =>
+            i === m.length - 1 && x.role === "agent"
+              ? { ...x, text: "Lost the agent — is the engine running?", pending: false }
+              : x
+          )
+        );
+      } finally {
+        window.setTimeout(stopBusPolling, 3000);
+        onBusyChange?.(false);
+      }
+    },
+    [onBusyChange, startBusPolling, stopBusPolling]
+  );
+
+  useImperativeHandle(handleRef, () => ({ ask }), [ask]);
+  useEffect(() => stopBusPolling, [stopBusPolling]);
+
   const analysing = closed.length > 0;
 
   useEffect(() => {
@@ -208,6 +348,44 @@ export default function FireMap({
         </div>
       )}
 
+      {/* conversation over the canvas — last few exchanges, agent updates live */}
+      {msgs.length > 0 && (
+        <div
+          className={
+            "pointer-events-none absolute bottom-24 left-0 z-[1090] px-4 transition-[right] duration-300 " +
+            (analysing ? "right-[336px]" : "right-0")
+          }
+        >
+          <div className="mx-auto flex w-full max-w-3xl flex-col gap-2.5">
+            {msgs.slice(-4).map((m) =>
+              m.role === "user" ? (
+                <div key={m.id} className="flex justify-end">
+                  <div className="max-w-[75%] rounded-3xl rounded-br-lg border border-neutral-200/60 bg-neutral-100/95 px-4 py-2 text-[14px] leading-6 text-neutral-900 shadow-[0_2px_12px_rgba(0,0,0,0.06)] backdrop-blur-sm">
+                    {m.text}
+                  </div>
+                </div>
+              ) : (
+                <div key={m.id} className="flex gap-2.5">
+                  <div
+                    className="mt-0.5 flex h-7 w-7 shrink-0 items-center justify-center rounded-full border border-neutral-200 bg-white/95 text-[13px] shadow-sm"
+                    style={{ color: accent }}
+                  >
+                    ✦
+                  </div>
+                  <div className="max-w-[80%] rounded-2xl border border-neutral-200/60 bg-white/95 px-3.5 py-2 text-[14px] leading-6 text-neutral-800 shadow-[0_2px_12px_rgba(0,0,0,0.06)] backdrop-blur-sm">
+                    {m.pending && m.text === "" ? (
+                      <span className="text-neutral-400">Thinking…</span>
+                    ) : (
+                      m.text
+                    )}
+                  </div>
+                </div>
+              )
+            )}
+          </div>
+        </div>
+      )}
+
       {/* analytics: appears only once an analysis is live */}
       {analysing && (
         <div className="absolute bottom-3 right-3 top-14 z-[1100] w-[320px]">
@@ -226,4 +404,6 @@ export default function FireMap({
       )}
     </div>
   );
-}
+});
+
+export default FireMap;
