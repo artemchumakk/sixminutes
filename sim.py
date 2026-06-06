@@ -329,10 +329,19 @@ def cmd_sweep(w: World) -> None:
     rows = []
     for s in w.names:
         cf = simulate(w, Posture(closed=frozenset([s])), year=2025, sample=40_000, seed=14)
-        d = float((cf["sim_s"] - base["sim_s"]).mean())
-        rows.append({"station": s, "mean_added_s": d})
-        print(f"  {s:<22} +{d:6.1f}s")
-    out = pl.DataFrame(rows).sort("mean_added_s", descending=True)
+        delta = (cf["sim_s"] - base["sim_s"]).to_numpy()
+        mine = (base["station"] == s).to_numpy()          # incidents this station served at baseline
+        local = float(delta[mine].mean()) if mine.any() else 0.0
+        pushed = int(((cf["sim_s"] > 360) & (base["sim_s"] <= 360)).sum())
+        rows.append({
+            "station": s,
+            "served_baseline": int(mine.sum()),
+            "local_added_s": local,                        # damage where it actually lands
+            "city_added_s": float(delta.mean()),           # context
+            "pushed_past_6min": pushed,
+        })
+        print(f"  {s:<22} local +{local:6.1f}s  city +{float(delta.mean()):4.1f}s  pushed {pushed}")
+    out = pl.DataFrame(rows).sort("local_added_s", descending=True)
     Path("data/processed").mkdir(parents=True, exist_ok=True)
     out.write_parquet("data/processed/fire_damage_v2.parquet")
     print("-> data/processed/fire_damage_v2.parquet")

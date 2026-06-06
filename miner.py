@@ -30,11 +30,17 @@ def gather() -> dict:
         calls = (inc.filter(pl.col("CalYear") >= 2024)
                  .group_by("FirstPumpArriving_DeployedFromStation").len()
                  .rename({"FirstPumpArriving_DeployedFromStation": "station", "len": "calls"}))
+        joined = sweep.join(calls, on="station", how="left")
         facts["closure_sweep_with_queueing"] = (
-            sweep.join(calls, on="station", how="left").sort("mean_added_s", descending=True)
-            .head(15).to_dicts())
-        facts["safest_closures"] = (
-            sweep.join(calls, on="station", how="left").sort("mean_added_s").head(5).to_dicts())
+            joined.sort("local_added_s", descending=True).head(15).to_dicts())
+        facts["safest_closures"] = joined.sort("local_added_s").head(5).to_dicts()
+        try:
+            from scipy.stats import spearmanr
+            facts["spearman_calls_vs_local_damage"] = round(float(
+                spearmanr(joined["calls"].fill_null(0).to_numpy(),
+                          joined["local_added_s"].to_numpy()).statistic), 3)
+        except Exception:
+            pass
 
     to = (mob.filter(pl.col("TurnoutTimeSeconds").is_between(10, 600))
           .group_by(pl.col("HourOfCall")).agg(med=pl.col("TurnoutTimeSeconds").median())
