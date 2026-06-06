@@ -87,8 +87,37 @@ const FireMap = forwardRef<
   const busCursor = useRef<number | null>(null);
   const busTimer = useRef<number | null>(null);
   const voiceAudio = useRef<HTMLAudioElement | null>(null);
-  const audioQueue = useRef<string[]>([]);
+  const audioQueue = useRef<{ url: string; text?: string }[]>([]);
   const audioBusy = useRef(false);
+  const audioCtx = useRef<AudioContext | null>(null);
+  const audioAnalyser = useRef<AnalyserNode | null>(null);
+  const [thinking, setThinking] = useState(false);
+  const [speakSeg, setSpeakSeg] = useState<{ text: string; dur: number; t0: number } | null>(null);
+  const [amp, setAmp] = useState(0);
+  const ampTimer = useRef<number | null>(null);
+
+  const startAmpMeter = useCallback(() => {
+    if (ampTimer.current) return;
+    const buf = new Uint8Array(128);
+    ampTimer.current = window.setInterval(() => {
+      let a = 0;
+      if (audioAnalyser.current) {
+        audioAnalyser.current.getByteFrequencyData(buf);
+        let s = 0;
+        for (let i = 0; i < buf.length; i++) s += buf[i];
+        a = Math.min(1, (s / buf.length / 140) * 1.4);
+      } else {
+        a = 0.45 + 0.35 * Math.abs(Math.sin(performance.now() / 260)); // graceful fallback
+      }
+      setAmp((prev) => prev * 0.55 + a * 0.45);
+    }, 80);
+  }, []);
+
+  const stopAmpMeter = useCallback(() => {
+    if (ampTimer.current) window.clearInterval(ampTimer.current);
+    ampTimer.current = null;
+    setAmp(0);
+  }, []);
 
   // pulse a marker's radius (close/arrival emphasis)
   const pulse = useCallback((m: L.CircleMarker, scale = 1.9, ms = 480) => {
@@ -318,20 +347,46 @@ const FireMap = forwardRef<
         case "audio":
           if (c.url) {
             // QUEUE segments — never cut one narration with the next
-            audioQueue.current.push(`${API}${c.url}`);
+            audioQueue.current.push({ url: `${API}${c.url}`, text: c.text });
             onAudioStateChange?.(true);
             const playNext = () => {
               const next = audioQueue.current.shift();
               if (!next) {
                 audioBusy.current = false;
+                setSpeakSeg(null);
+                stopAmpMeter();
                 onAudioStateChange?.(false);
                 return;
               }
               audioBusy.current = true;
-              const a = new Audio(next);
+              const a = new Audio();
+              a.crossOrigin = "anonymous";
+              a.src = next.url;
               voiceAudio.current = a;
+              a.onloadedmetadata = () => {
+                if (next.text) {
+                  setSpeakSeg({ text: next.text, dur: Math.max(600, a.duration * 1000), t0: performance.now() });
+                }
+              };
               a.onended = playNext;
               a.onerror = playNext;
+              // audio-reactive: tap the element into a shared analyser (best effort)
+              try {
+                if (!audioCtx.current) {
+                  const Ctx = window.AudioContext ??
+                    (window as unknown as { webkitAudioContext: typeof AudioContext }).webkitAudioContext;
+                  audioCtx.current = new Ctx();
+                  audioAnalyser.current = audioCtx.current.createAnalyser();
+                  audioAnalyser.current.fftSize = 256;
+                  audioAnalyser.current.connect(audioCtx.current.destination);
+                }
+                void audioCtx.current.resume();
+                const src = audioCtx.current.createMediaElementSource(a);
+                src.connect(audioAnalyser.current!);
+              } catch {
+                /* analyser unavailable -> synthetic pulse fallback */
+              }
+              startAmpMeter();
               a.play().catch(playNext);
             };
             if (!audioBusy.current) playNext();
@@ -408,6 +463,7 @@ const FireMap = forwardRef<
       const t = text.trim();
       if (!t) return;
       onBusyChange?.(true);
+      setThinking(true);
       setMsgs((m) => [
         ...m.slice(-6),
         { id: ++msgId.current, role: "user", text: t },
@@ -441,6 +497,7 @@ const FireMap = forwardRef<
         );
       } finally {
         window.setTimeout(stopBusPolling, 8000); // generous: final-verdict TTS lags the answer
+        setThinking(false);
         onBusyChange?.(false);
       }
     },
@@ -459,8 +516,10 @@ const FireMap = forwardRef<
       voiceAudio.current.onerror = null;
       voiceAudio.current.pause();
     }
+    setSpeakSeg(null);
+    stopAmpMeter();
     onAudioStateChange?.(false);
-  }, [onAudioStateChange]);
+  }, [onAudioStateChange, stopAmpMeter]);
   useImperativeHandle(handleRef, () => ({ ask, clearChat, note, stopAudio }),
     [ask, clearChat, note, stopAudio]);
   useEffect(() => stopBusPolling, [stopBusPolling]);
@@ -474,9 +533,64 @@ const FireMap = forwardRef<
     onAnalysingChange?.(analysing);
   }, [analysing, onAnalysingChange]);
 
+  const speaking = speakSeg !== null;
+
   return (
     <div className="absolute inset-0">
       <div ref={divRef} className="h-full w-full" />
+
+      {/* ambient edge glow — the room breathes while the agent speaks */}
+      <div
+        className="pointer-events-none absolute inset-0 z-[1060] transition-opacity duration-500"
+        style={{
+          opacity: speaking ? 0.25 + amp * 0.55 : 0,
+          boxShadow: `inset 0 0 140px 10px ${accent}`,
+        }}
+      />
+
+      {/* corner presence — replaces the blocking center card */}
+      {(thinking || speaking) && (
+        <div className="pointer-events-none absolute left-4 top-4 z-[1100] flex items-center gap-2.5 rounded-full border border-neutral-200 bg-white/90 py-1.5 pl-2 pr-4 shadow-[0_2px_12px_rgba(0,0,0,0.08)] backdrop-blur-sm">
+          <span
+            className="block h-5 w-5 rounded-full transition-transform duration-100"
+            style={{
+              background: `radial-gradient(circle at 32% 28%, #ffffff 0%, ${accent}66 35%, ${accent} 75%)`,
+              boxShadow: `0 0 ${8 + amp * 22}px ${accent}aa`,
+              transform: `scale(${speaking ? 1 + amp * 0.45 : 1})`,
+              animation: thinking && !speaking ? "orb-breathe 1.6s ease-in-out infinite" : undefined,
+            }}
+          />
+          <span className="text-[12px] font-medium text-neutral-600">
+            {speaking ? "Brigade Watch · speaking" : "Brigade Watch · thinking"}
+          </span>
+          {speaking && (
+            <span className="flex h-3.5 items-end gap-[2px]">
+              {[0, 1, 2, 3, 4].map((i) => (
+                <span
+                  key={i}
+                  className="w-[2.5px] rounded-full transition-[height] duration-100"
+                  style={{
+                    background: accent,
+                    height: `${Math.max(2, (amp * 14 * (0.5 + Math.abs(Math.sin(performance.now() / 150 + i * 1.4))))) | 0}px`,
+                  }}
+                />
+              ))}
+            </span>
+          )}
+        </div>
+      )}
+
+      {/* cinematic subtitle — word-reveal paced to the segment's real duration */}
+      {speakSeg && (
+        <div
+          className={
+            "pointer-events-none absolute bottom-32 left-0 z-[1090] px-4 transition-[right] duration-300 " +
+            (analysing ? "right-[336px]" : "right-0")
+          }
+        >
+          <Subtitle key={speakSeg.t0} seg={speakSeg} accent={accent} />
+        </div>
+      )}
 
       {/* quiet hint — the only chrome before an analysis begins */}
       {!analysing && (
@@ -519,5 +633,32 @@ const FireMap = forwardRef<
     </div>
   );
 });
+
+/** Karaoke-style subtitle: words appear at the pace of the audio segment. */
+function Subtitle({ seg, accent }: { seg: { text: string; dur: number; t0: number }; accent: string }) {
+  const words = seg.text.split(/\s+/).filter(Boolean);
+  const [shown, setShown] = useState(0);
+  useEffect(() => {
+    const iv = window.setInterval(() => {
+      const p = Math.min(1, (performance.now() - seg.t0) / (seg.dur * 0.92));
+      setShown(Math.ceil(p * words.length));
+      if (p >= 1) window.clearInterval(iv);
+    }, 60);
+    return () => window.clearInterval(iv);
+  }, [seg.t0, seg.dur, words.length]);
+  return (
+    <div className="mx-auto w-fit max-w-3xl">
+      <div
+        className="animate-fade-up rounded-2xl border border-neutral-200/70 bg-white/95 px-5 py-3 text-center shadow-[0_8px_30px_rgba(0,0,0,0.10)] backdrop-blur-md"
+        style={{ borderTopColor: accent, borderTopWidth: 2 }}
+      >
+        <div className="text-[17px] font-medium leading-7 tracking-[-0.01em] text-neutral-900">
+          {words.slice(0, shown).join(" ")}
+          <span className="text-neutral-300">{shown < words.length ? " " + words.slice(shown).join(" ") : ""}</span>
+        </div>
+      </div>
+    </div>
+  );
+}
 
 export default FireMap;

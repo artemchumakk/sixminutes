@@ -418,7 +418,7 @@ def ask(a: Ask) -> dict:
                     try:
                         out = brigade.tts(txt, play=False)
                         if out:
-                            ui_emit({"type": "audio", "url": f"/audio/{out.name}"})
+                            ui_emit({"type": "audio", "url": f"/audio/{out.name}", "text": txt})
                     except Exception:
                         pass
                 threading.Thread(target=_speak_final, args=(answer[:600],), daemon=True).start()

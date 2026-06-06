@@ -204,18 +204,6 @@ export default function Chat({
           onMessagesChange={setFireMsgs}
           onAudioStateChange={setFireAudioPlaying}
         />
-        {/* loading screen while the agent thinks/speaks in voice mode */}
-        {voiceActive && (fireBusy || fireAudioPlaying) && (
-          <div className="pointer-events-none absolute inset-0 z-[1080] flex items-center justify-center">
-            <div className="animate-fade-up flex flex-col items-center gap-3 rounded-2xl border border-neutral-200 bg-white/90 px-9 py-6 shadow-[0_8px_30px_rgba(0,0,0,0.12)] backdrop-blur-sm">
-              <div
-                className="h-9 w-9 animate-spin rounded-full border-[2.5px] border-neutral-200"
-                style={{ borderTopColor: ws.accent }}
-              />
-              <ThinkingStatus speaking={fireAudioPlaying} />
-            </div>
-          </div>
-        )}
         <div
           className={
             "pointer-events-none absolute bottom-4 left-0 z-[1100] px-4 transition-[right] duration-300 " +
@@ -278,25 +266,6 @@ export default function Chat({
       <div className="px-4 pb-4">
         <div className="mx-auto w-full max-w-3xl">{composer}</div>
       </div>
-    </div>
-  );
-}
-
-function ThinkingStatus({ speaking }: { speaking: boolean }) {
-  const phrases = [
-    "Consulting the twin…",
-    "Re-running 132,860 incidents…",
-    "Weighing cover moves…",
-    "Reading the wards…",
-  ];
-  const [i, setI] = useState(0);
-  useEffect(() => {
-    const t = window.setInterval(() => setI((x) => x + 1), 1700);
-    return () => window.clearInterval(t);
-  }, []);
-  return (
-    <div className="text-[13px] text-neutral-500">
-      {speaking ? "Speaking…" : phrases[i % phrases.length]}
     </div>
   );
 }

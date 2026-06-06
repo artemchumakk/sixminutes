@@ -171,7 +171,9 @@ def tool_ui(action: str = "", steps: list[dict] | None = None, **kwargs) -> dict
             try:
                 out = tts(text, play=False)
                 if out:
-                    httpx.post(f"{API}/ui/emit", json={"type": "audio", "url": f"/audio/{out.name}"}, timeout=10)
+                    httpx.post(f"{API}/ui/emit",
+                               json={"type": "audio", "url": f"/audio/{out.name}", "text": text},
+                               timeout=10)
             except Exception as e:
                 jlog("error", where="ui_tts", error=str(e)[:200])
         import threading
