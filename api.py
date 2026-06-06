@@ -186,9 +186,15 @@ def station_detail(name: str) -> dict:
         mine.group_by("ward").len().sort("len", descending=True).head(5)["ward"].to_list()
         if mine.height else []
     )
+    d2 = (w.SE - w.SE[i]) ** 2 + (w.SN - w.SN[i]) ** 2
+    nearest = [
+        {"name": w.names[j], "km": round(float(np.sqrt(d2[j])) / 1000, 1)}
+        for j in np.argsort(d2)[1:4]
+    ]
     return {
         "name": name,
         "pumps": int(w.pumps[i]),
+        "nearest_cover": nearest,   # the dependency web: who backs this ground up
         "calls_carried_sample": int(mine.height),
         "calls_carried_per_yr": int(mine.height * WINDOW_N / DEFAULT_SAMPLE),
         "turnout_day_med_s": float(np.median(day)) if day is not None and len(day) else None,
@@ -368,6 +374,7 @@ def ask_stop() -> dict:
 class Ask(BaseModel):
     text: str = Field(max_length=2000)
     speak: bool = True
+    context: dict | None = None   # board state from the UI: inspected station, closed list, hour band
 
 
 @app.post("/ask")
@@ -381,7 +388,18 @@ def ask(a: Ask) -> dict:
         brigade.SHOULD_STOP = STOP_FLAG.is_set
         brigade.SPEAK_NARRATION = a.speak
         del ASK_HISTORY[:-8]   # keep short memory; old choreographies must not contaminate new asks
-        answer = brigade.agent_turn(a.text, ASK_HISTORY)
+        text = a.text
+        if a.context:
+            ctx = []
+            if a.context.get("station"):
+                ctx.append(f"inspected_station={a.context['station']}")
+            if a.context.get("closed"):
+                ctx.append(f"closed_on_board={a.context['closed']}")
+            if a.context.get("hours"):
+                ctx.append(f"hour_band={a.context['hours']}")
+            if ctx:
+                text = f"[BOARD CONTEXT: {'; '.join(ctx)}] {a.text}"
+        answer = brigade.agent_turn(text, ASK_HISTORY)
         # ensure the final answer always lands on screen even if the model forgot ui.narrate
         if not any(c.get("type") == "narrate" and c.get("final") for c in UI_COMMANDS[-8:]):
             ui_emit({"type": "narrate", "text": answer, "final": True})

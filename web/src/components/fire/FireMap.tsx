@@ -70,6 +70,10 @@ const FireMap = forwardRef<
   const [result, setResult] = useState<ScenarioResult | null>(null);
   const [running, setRunning] = useState(false);
   const [station, setStation] = useState<StationDetail | null>(null);
+  const stationRef = useRef<StationDetail | null>(null);
+  useEffect(() => {
+    stationRef.current = station;
+  }, [station]);
   const [msgs, setMsgs] = useState<FireMsg[]>([]);
   const msgId = useRef(0);
   const busCursor = useRef<number | null>(null);
@@ -308,7 +312,11 @@ const FireMap = forwardRef<
         const tip = await fetchCommands(999_999_999);
         busCursor.current = tip.next;
         startBusPolling();
-        const res = await askAgent(t, speak);
+        const res = await askAgent(t, speak, {
+          station: stationRef.current?.name,
+          closed: [...closedRef.current],
+          hours: hoursRef.current,
+        });
         const final =
           res.status === 429
             ? "Hold on — I'm mid-analysis. Ask again in a moment."
@@ -360,6 +368,16 @@ const FireMap = forwardRef<
       {running && (
         <div className="pointer-events-none absolute left-1/2 top-5 z-[1100] -translate-x-1/2 rounded-full border border-neutral-200 bg-white/90 px-4 py-1.5 text-[12.5px] text-neutral-500 shadow-[0_2px_12px_rgba(0,0,0,0.06)] backdrop-blur-sm">
           simulating a year of London…
+        </div>
+      )}
+
+      {/* choropleth legend — a warden can't brief colors they can't define */}
+      {result && !running && (
+        <div className="pointer-events-none absolute bottom-4 left-4 z-[1090] flex items-center gap-2.5 rounded-lg border border-neutral-200 bg-white/90 px-3 py-1.5 text-[11px] text-neutral-500 shadow-sm backdrop-blur-sm">
+          <span className="font-medium text-neutral-400">added response</span>
+          <span className="flex items-center gap-1"><span className="h-2.5 w-2.5 rounded-sm" style={{ background: "#facc15" }} />3–20s</span>
+          <span className="flex items-center gap-1"><span className="h-2.5 w-2.5 rounded-sm" style={{ background: "#f97316" }} />20–60s</span>
+          <span className="flex items-center gap-1"><span className="h-2.5 w-2.5 rounded-sm" style={{ background: "#dc2626" }} />60s+</span>
         </div>
       )}
 

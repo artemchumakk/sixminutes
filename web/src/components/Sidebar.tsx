@@ -30,13 +30,15 @@ const INITIAL_WORKSPACES: WorkspaceFolderData[] = [
   },
 ];
 
-// fire workspace: real demo accelerators — each one is sent to the agent verbatim
+// fire workspace: the warden's board — click your station on the map first and
+// "my ground / my pumps" resolve to it (board context flows to the agent)
 const FIRE_QUICK_ASKS = [
-  "Close Biggin Hill — who gets hurt?",
-  "Best cover move if Croydon's pumps commit tonight",
-  "Soho closure: night vs day",
-  "Which buildings waste the most time on false alarms?",
-  "How do I know your simulations are right?",
+  "My pumps just committed — who covers my ground?",
+  "Where does the 6-minute promise break tonight?",
+  "Rank stations by how irreplaceable they are",
+  "A big job takes six pumps from my patch — knock-on and best cover?",
+  "Which buildings keep crying wolf — and what does it cost?",
+  "Why should I trust this?",
   "Reset the board",
 ];
 

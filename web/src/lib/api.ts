@@ -42,11 +42,18 @@ export interface BaselineInfo {
 export interface StationDetail {
   name: string;
   pumps: number;
+  nearest_cover: { name: string; km: number }[];
   calls_carried_per_yr: number;
   turnout_day_med_s: number | null;
   turnout_night_med_s: number | null;
   ground_wards: string[];
   closure: { local_added_s: number; pushed_past_6min: number; city_added_s: number } | null;
+}
+
+export interface AskContext {
+  station?: string;
+  closed?: string[];
+  hours?: [number, number] | null;
 }
 
 export type HourBand = [number, number] | null;
@@ -87,12 +94,13 @@ export interface UiCommand {
 
 export async function askAgent(
   text: string,
-  speak = false
+  speak = false,
+  context?: AskContext
 ): Promise<{ answer?: string; detail?: string; status: number }> {
   const r = await fetch(`${API}/ask`, {
     method: "POST",
     headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({ text, speak }),
+    body: JSON.stringify({ text, speak, context }),
   });
   const body = await r.json().catch(() => ({}));
   return { ...body, status: r.status };

@@ -41,6 +41,7 @@ export function HourBandControl({
 }) {
   const opts: { label: string; v: HourBand }[] = [
     { label: "24h", v: null },
+    { label: "Rush 7–10", v: [7, 10] },
     { label: "Day 10–18", v: [10, 18] },
     { label: "Night 22–6", v: [22, 6] },
   ];
@@ -252,6 +253,12 @@ export default function FirePanel({
           <div className="mb-1 text-[14px] font-medium text-neutral-900">{station.name}</div>
           <Row label="pumps" base={String(station.pumps)} />
           <Row label="calls carried" base={`~${station.calls_carried_per_yr.toLocaleString()}/yr`} />
+          {station.nearest_cover?.length > 0 && (
+            <Row
+              label="nearest cover"
+              base={station.nearest_cover.map((c) => `${c.name} ${c.km}km`).join(" · ")}
+            />
+          )}
           {station.turnout_day_med_s != null && station.turnout_night_med_s != null && (
             <Row label="turnout day / night"
                  base={`${fmtS(station.turnout_day_med_s)} / ${fmtS(station.turnout_night_med_s)}`} />
