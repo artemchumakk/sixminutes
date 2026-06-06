@@ -100,10 +100,9 @@
   <div id="map"></div>
   <aside>
     <div class="card">
-      <h2>Posture</h2>
-      <select id="presets" onchange="applyPreset(this.value)"><option value="">— presets —</option></select>
-      <button id="mode2014" onclick="toggle2014()">⬡ ENTER PRE-2014 LONDON (112 stations)</button>
-      <div class="chips" id="chips"><span class="strip">click stations to close them</span></div>
+      <h2>Posture — latest 12 months of London</h2>
+      <button id="mode2014" onclick="toggle2014()" style="display:none">⬡ PRE-2014 LONDON</button>
+      <div class="chips" id="chips"><span class="strip">click stations to close them, or ask the room</span></div>
       <button id="run" onclick="runScenario()">RUN COUNTERFACTUAL</button>
       <div id="stopwatch"></div>
     </div>
@@ -171,21 +170,21 @@ fetch(API+"/wards_geo").then(r=>r.json()).then(gj=>{
 fetch(API+"/wards").then(r=>r.json()).then(ws=>ws.forEach(w=>{ wardCentroids[norm(w.ward)] ||= L.latLng(w.lat,w.lon); }));
 
 // ---------- findings rail ----------
+let findingAsks = {};
 fetch(API+"/findings").then(r=>r.json()).then(fs=>{
-  document.getElementById("rail").innerHTML = "<h2>FINDINGS — computed this weekend</h2>" + fs.map(f=>
-    `<div class="fcard" id="f-${f.id}" onclick="findingClick('${f.id}','${f.preset||""}')">
+  fs.forEach(f=>findingAsks[f.id]=f.ask);
+  document.getElementById("rail").innerHTML = "<h2>FINDINGS — click to ask the agent</h2>" + fs.map(f=>
+    `<div class="fcard" id="f-${f.id}" onclick="findingClick('${f.id}')">
        <div class="num">${f.number}</div><div class="t">${f.title}</div><div class="l">${f.line}</div></div>`).join("");
 });
-function findingClick(id, preset){ glowFinding(id); if(preset) { applyPreset(preset); runScenario(); } }
+function findingClick(id){ glowFinding(id);
+  const q=findingAsks[id]; if(!q) return;
+  document.getElementById("ask").value=q; askAgent(); }
 function glowFinding(id){ document.querySelectorAll(".fcard").forEach(c=>c.classList.remove("glow"));
   const el=document.getElementById("f-"+id); if(el){ el.classList.add("glow"); el.scrollIntoView({block:"nearest"}); } }
 
-// ---------- presets ----------
-fetch(API+"/presets").then(r=>r.json()).then(ps=>{
-  presetDefs=ps;
-  const sel=document.getElementById("presets");
-  Object.entries(ps).forEach(([k,v])=>{ const o=document.createElement("option"); o.value=k; o.textContent=v.label; sel.appendChild(o); });
-});
+// ---------- presets (internal only: used by agent's compare_postures verb) ----------
+fetch(API+"/presets").then(r=>r.json()).then(ps=>{ presetDefs=ps; });
 function applyPreset(k){ if(!k||!presetDefs[k]) return;
   const p=presetDefs[k]; closed.clear(); p.close.forEach(n=>closed.add(n));
   if(p.baseline==="pre2014" && !mode2014) toggle2014();
@@ -228,11 +227,11 @@ function renderResult(res, dt){
   document.getElementById("result").style.display="block";
   document.getElementById("r-mean").textContent="+"+res.city.mean_delta_s+"s";
   document.getElementById("r-p90").textContent="+"+res.city.p90_delta_s+"s";
-  document.getElementById("r-pushed").textContent=Math.round(res.city.pushed_past_6min*3.265).toLocaleString();
+  document.getElementById("r-pushed").textContent=Math.round(res.city.pushed_past_6min*(res.scale||3.265)).toLocaleString();
   document.getElementById("r-wards").innerHTML=res.worst_wards.slice(0,8).map(w=>
     `<div class="ward"><span>${w.ward} · ${w.borough}</span><b>+${Math.round(w.delta_mean_s)}s</b></div>`).join("");
   document.getElementById("stopwatch").innerHTML=
-    `<b>${res.elapsed_s}s</b> · 40,000 incidents replayed · ${(40000/res.elapsed_s/1000).toFixed(0)}k/sec`;
+    `<b>${res.elapsed_s}s</b> · 40,000 incidents · ${res.window||"latest 12 months"} · ${(40000/res.elapsed_s/1000).toFixed(0)}k/sec`;
   // choropleth
   Object.values(wardPolys).forEach(p=>p.setStyle({fillColor:"#0e1722",fillOpacity:.35}));
   Object.entries(res.ward_deltas||{}).forEach(([ward,d])=>{
@@ -258,7 +257,7 @@ async function comparePostures(keys){
     const res=await fetch(API+"/scenario",{method:"POST",headers:{"Content-Type":"application/json"},
       body:JSON.stringify({close:p.close, baseline:p.baseline})}).then(r=>r.json());
     firstRes ||= res;
-    const pushed=Math.round(res.city.pushed_past_6min*3.265);
+    const pushed=Math.round(res.city.pushed_past_6min*(res.scale||3.265));
     cell.querySelector(".v").textContent=pushed.toLocaleString();
     out.push({cell,pushed});
   }

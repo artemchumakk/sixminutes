@@ -56,25 +56,34 @@ def _posture(close: list[str], open_: list[str], pump_delta: dict[str, int]) -> 
     return sim.Posture(closed=frozenset(close), pump_delta=dict(pump_delta), opened=opened)
 
 
+WINDOW_MONTHS = 12      # the product replays the freshest 12 months of London
+WINDOW_N = 0            # total incidents in that window (set at startup)
+
+
 def _baseline(n: int, world: str = "current") -> pl.DataFrame:
     with LOCK:
         key = (n, world)
         if key not in BASELINE:
             posture = (sim.Posture() if world == "current"
                        else _posture([], list(LSP5.keys()), {}))
-            BASELINE[key] = sim.simulate(WORLD, posture, year=2025, sample=n,
-                                         seed=14, p_unavail=P_UNAVAIL)
+            BASELINE[key] = sim.simulate(WORLD, posture, latest_months=WINDOW_MONTHS,
+                                         sample=n, seed=14, p_unavail=P_UNAVAIL)
         return BASELINE[key]
 
 
 @app.on_event("startup")
 def _load() -> None:
-    global WORLD
+    global WORLD, WINDOW_N
     WORLD = sim.World()
+    from datetime import timedelta
+    cutoff = WORLD.inc["t0"].max() - timedelta(days=int(WINDOW_MONTHS * 30.44))
+    WINDOW_N = int((WORLD.inc["t0"] > cutoff).sum())
+    print(f"[api] product window: latest {WINDOW_MONTHS} months = {WINDOW_N:,} incidents "
+          f"(through {WORLD.inc['t0'].max()})")
 
     def _prewarm() -> None:
         _baseline(DEFAULT_SAMPLE, "current")
-        _baseline(DEFAULT_SAMPLE, "pre2014")   # 2014 mode answers instantly
+        _baseline(DEFAULT_SAMPLE, "pre2014")   # 2014 capability stays internal (demo via agent)
     threading.Thread(target=_prewarm, daemon=True).start()
 
 
@@ -155,7 +164,8 @@ def scenario(s: Scenario) -> dict:
     else:
         open_set = [n for n in s.open if n not in s.close]
     posture = _posture([c for c in s.close if c in w.sidx], open_set, s.pump_delta)
-    cf = sim.simulate(w, posture, year=2025, sample=s.sample, seed=14, p_unavail=P_UNAVAIL)
+    cf = sim.simulate(w, posture, latest_months=WINDOW_MONTHS, sample=s.sample,
+                      seed=14, p_unavail=P_UNAVAIL)
     j = base.select("IncidentNumber", base_s=pl.col("sim_s")).join(
         cf.select("IncidentNumber", "sim_s", "ward", "borough"), on="IncidentNumber"
     ).with_columns(d=pl.col("sim_s") - pl.col("base_s"))
@@ -170,6 +180,8 @@ def scenario(s: Scenario) -> dict:
     affected = by_ward.filter(pl.col("delta_mean_s").abs() > 5)
     return {
         "posture": {"close": s.close, "pump_delta": s.pump_delta},
+        "window": f"latest {WINDOW_MONTHS} months",
+        "scale": round(WINDOW_N / s.sample, 3),   # sample -> full-window/yr scaling
         "elapsed_s": round(time.time() - t0, 2),
         "city": {
             "mean_delta_s": round(float(j["d"].mean()), 1),
@@ -259,19 +271,18 @@ def presets() -> dict:
 
 @app.get("/findings")
 def findings() -> list[dict]:
+    # current-network findings only (the 2014 evidence lives in the demo, not app chrome);
+    # clicking a card ASKS THE AGENT — nothing canned
     return [
         {"id": "law", "number": "−0.18", "title": "Call volume anti-predicts closure damage",
          "line": "Biggin Hill: quietest station, near-critical. Whitechapel: 7× busier, nearly free.",
-         "preset": "biggin_hill"},
-        {"id": "2014", "number": "63s ≈ 52s", "title": "The twin reproduces the 2014 closures",
-         "line": "Measured damage +63s (DiD); the twin, blind to pre-2021 data, predicts 52s.",
-         "preset": "lsp5_actual"},
-        {"id": "betterten", "number": "1.47×", "title": "2014 closed the wrong ten",
-         "line": "Set-aware optimization: same savings, 1,287 fewer broken promises a year, 0/10 overlap.",
-         "preset": "lsp5_optimal"},
+         "ask": "Show me what happens if Biggin Hill closes, then contrast it with closing Whitechapel."},
         {"id": "night", "number": "+47s", "title": "Night turnout is station-specific",
          "line": "Dagenham crews: 80s by day, 127s at night. The promise has a time-of-day geography.",
-         "preset": None},
+         "ask": "Tell me about the night turnout problem and which stations are worst."},
+        {"id": "validated", "number": "±5%", "title": "Validated against blind 2025",
+         "line": "Calibrated on 2024, tested on 130k unseen incidents: mean +2.4%, p90 −3.7%.",
+         "ask": "How do I know your simulations are trustworthy?"},
     ]
 
 

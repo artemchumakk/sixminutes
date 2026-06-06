@@ -175,7 +175,7 @@ CHOREOGRAPHY CONTRACT - when the user says "show me", "demonstrate", "what happe
  4) ui.run_scenario to animate it
  5) ui.focus_ward with the worst ward name from your step-3 numbers
  6) ui.narrate the verdict WITH numbers, then {"say":...} summarizing.
-For 2014 questions: ui.open_2014, then ui.close_stations with the politicians' ten, then ui.run_scenario (baseline pre2014), then ui.compare_postures; cite 4,049 vs 5,290 vs 2,762 broken promises/yr (politicians/naive/optimizer) and that the optimizer's ten shares 0/10 stations with 2014.
+For 2014 questions (DEMO ONLY - not part of normal app flow): ui.open_2014, then ui.close_stations with the politicians' ten, then ui.run_scenario (baseline pre2014), then ui.compare_postures. ALWAYS cite the live numbers from your own run_scenario results (multiply pushed_past_6min by the response's scale for /yr); canonical reference magnitudes: politicians ~4,000 vs naive ~5,300 vs optimizer ~2,800 broken promises/yr, optimizer overlap 0/10 with 2014.
 Rules: lead with numbers; control-room brevity; seconds matter. Fire tier is validated (sim within ±5% of held-out 2025); police/ambulance layers are Tier B (demand + transferred physics) - say so if asked. Never invent events not in recall results."""
 
 SYSTEM = ("You are Brigade Watch, the duty intelligence officer for SIXMINUTES - a validated "
@@ -305,12 +305,14 @@ def stt(seconds: int = 6) -> str:
 def patrol(speak: bool, accel: int = 60) -> None:
     """Autonomous overnight session: replay 2025 through the twin, observe, remember."""
     import polars as pl
-    inc = (pl.read_parquet(ROOT / "data/incidents.parquet")
-           .filter(pl.col("CalYear") == 2025)
-           .sort("DateOfCall", "HourOfCall"))
+    from datetime import timedelta
+    all_inc = pl.read_parquet(ROOT / "data/incidents.parquet")
+    cutoff = all_inc["DateOfCall"].max() - timedelta(days=365)
+    inc = all_inc.filter(pl.col("DateOfCall") > cutoff).sort("DateOfCall", "HourOfCall")
     days = inc["DateOfCall"].unique().sort().to_list()
-    remember("session", "London", "info", f"Patrol started. Watching 2025 replay at {accel}x. "
-             f"{inc.height:,} incidents across {len(days)} days queued.")
+    remember("session", "London", "info",
+             f"Patrol started. Watching the latest 12 months of London ({days[0]} -> {days[-1]}) "
+             f"at {accel}x: {inc.height:,} incidents across {len(days)} days queued.")
     # seed today's validated findings so voice recall can answer questions about them
     for loc, narr in [
         ("Biggin Hill", "FINDING: Biggin Hill is London's quietest station (385 calls/yr) yet closing it adds +215s locally and pushes 9.1% of its calls past the 6-minute target; call volume correlates NEGATIVELY (-0.18) with closure damage."),
