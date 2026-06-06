@@ -385,31 +385,50 @@ function FireLiveVoice({
   };
 
   const sawAudioRef = useRef(false);
+  const busySeenRef = useRef(false);
+  const holdStartRef = useRef(performance.now());
+  const [holdTick, forceTick] = useState(0);
+
+  const releaseMic = () => {
+    stopTick();
+    try {
+      if (recRef.current?.state === "recording") {
+        recRef.current.onstop = null;
+        recRef.current.stop();
+      }
+    } catch {
+      /* already stopped */
+    }
+    // HARD off: release the stream so the browser's recording indicator dies too
+    streamRef.current?.getTracks().forEach((t) => t.stop());
+    streamRef.current = null;
+    recRef.current = null;
+  };
 
   const send = async () => {
     if (phaseRef.current !== "live") return;
     stopTick();
     sawAudioRef.current = false; // fresh turn: we don't yet know if audio is coming
+    busySeenRef.current = false; // ...nor has the ask registered yet
     const rec = recRef.current;
     setPhase("thinking");
     const finalize = async () => {
-      try {
-        const blob = new Blob(chunksRef.current, { type: rec?.mimeType || "audio/webm" });
-        let text = captionRef.current;
-        if (blob.size > 2000) {
-          try {
-            const r = await transcribeVoice(blob); // one last full pass catches trailing words
-            if (r.text.trim()) text = r.text;
-          } catch {
-            /* fall back to live caption */
-          }
+      const blob = new Blob(chunksRef.current, { type: rec?.mimeType || "audio/webm" });
+      // mic is DEAD from this point until the agent has fully answered
+      streamRef.current?.getTracks().forEach((t) => t.stop());
+      streamRef.current = null;
+      recRef.current = null;
+      let text = captionRef.current;
+      if (blob.size > 2000) {
+        try {
+          const r = await transcribeVoice(blob); // one last full pass catches trailing words
+          if (r.text.trim()) text = r.text;
+        } catch {
+          /* fall back to live caption */
         }
-        if (text.trim()) submitRef.current(text.trim());
-        else {
-          setPhase("live");
-          void startLive();
-        }
-      } catch {
+      }
+      if (text.trim()) submitRef.current(text.trim());
+      else {
         setPhase("live");
         void startLive();
       }
@@ -454,21 +473,15 @@ function FireLiveVoice({
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
-  // resume listening once the agent has TRULY finished talking
+  // LATCHED turn machine: mic re-arms ONLY after the ask was seen busy AND
+  // finished AND the audio queue (if any) fully drained, plus a tail.
   useEffect(() => {
     if (audioPlaying) sawAudioRef.current = true;
+    if (busy) busySeenRef.current = true;
     if (phase === "live") {
-      // straggler audio arrived after we resumed: pause the take, let it speak
+      // straggler audio arrived after we re-armed: kill the take, let it speak
       if (audioPlaying) {
-        stopTick();
-        try {
-          if (recRef.current?.state === "recording") {
-            recRef.current.onstop = null;
-            recRef.current.stop();
-          }
-        } catch {
-          /* already stopped */
-        }
+        releaseMic();
         setPhase("speaking");
       }
       return;
@@ -481,15 +494,29 @@ function FireLiveVoice({
       setPhase("thinking");
       return;
     }
-    // queue drained & ask resolved. If audio played this turn, short tail;
-    // if none arrived YET, wait long enough for the TTS to land (then give up).
-    const grace = sawAudioRef.current ? 900 : 4000;
+    // idle. Three cases:
+    //  1) ask not yet registered (transcribe finalizing) -> hold, re-check via timer
+    //  2) ask done, audio already played -> short 900ms tail
+    //  3) ask done, no audio (yet) -> wait up to 4s for TTS, then re-arm anyway
+    const grace = !busySeenRef.current ? 1200 : sawAudioRef.current ? 900 : 4000;
     const t = window.setTimeout(() => {
-      if (phaseRef.current !== "live") void startLive();
+      if (phaseRef.current === "live") return;
+      if (!busySeenRef.current) {
+        // ask hasn't registered yet (transcribe finalizing / slow start):
+        // hold up to 8s total, re-arming this check each cycle
+        if (performance.now() - holdStartRef.current > 8000) void startLive();
+        else forceTick((x) => x + 1); // re-run the effect -> fresh hold timer
+        return;
+      }
+      void startLive();
     }, grace);
     return () => window.clearTimeout(t);
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [busy, audioPlaying, phase]);
+  }, [busy, audioPlaying, phase, holdTick]);
+
+  useEffect(() => {
+    if (phase === "thinking") holdStartRef.current = performance.now();
+  }, [phase]);
 
   if (err) {
     return (
