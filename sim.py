@@ -33,6 +33,7 @@ MAX_DIST = 15_000   # travel-model validity radius (m)
 class Posture:
     closed: frozenset[str] = field(default_factory=frozenset)
     pump_delta: dict[str, int] = field(default_factory=dict)  # station -> +/- pumps
+    opened: dict[str, tuple[float, float, int]] = field(default_factory=dict)  # name -> (E, N, pumps)
 
 
 class World:
@@ -161,6 +162,7 @@ class World:
     # are pure signal (any distant nonzero delta = a REAL queueing knock-on).
     @staticmethod
     def u01(a: int, b: int, salt: int, seed: int) -> float:
+        a, b = int(a), int(b)  # numpy ints would overflow noisily
         x = (a * 0x9E3779B1 ^ b * 0x85EBCA77 ^ salt * 0xC2B2AE3D ^ seed * 0x27D4EB2F) & 0xFFFFFFFF
         x ^= x >> 16; x = (x * 0x7FEB352D) & 0xFFFFFFFF
         x ^= x >> 15; x = (x * 0x846CA68B) & 0xFFFFFFFF
@@ -212,6 +214,33 @@ def simulate(w: World, posture: Posture, year: int | None = None,
     for f in free:
         heapq.heapify(f)
 
+    # --- opened (new or reopened) stations -------------------------------
+    new_names = list(posture.opened.keys())
+    n_new = len(new_names)
+    if n_new:
+        NE = np.array([posture.opened[s][0] for s in new_names], dtype=np.float64)
+        NN = np.array([posture.opened[s][1] for s in new_names], dtype=np.float64)
+        new_pumps = [max(1, int(posture.opened[s][2])) for s in new_names]
+        E_sub = w.inc["Easting_rounded"].to_numpy()[idxs]
+        N_sub = w.inc["Northing_rounded"].to_numpy()[idxs]
+        d_x = np.sqrt((E_sub[:, None] - NE[None, :]) ** 2 + (N_sub[:, None] - NN[None, :]) ** 2)
+        prox = np.array([int(np.argmin((w.SE - NE[m]) ** 2 + (w.SN - NN[m]) ** 2))
+                         for m in range(n_new)], dtype=np.float32)  # nearest existing station as feature proxy
+        HRs = w.inc["hour"].to_numpy()[idxs]
+        DWs = w.inc["dow"].to_numpy()[idxs]
+        MOs = w.inc["month"].to_numpy()[idxs]
+        fx = np.empty((len(idxs) * n_new, 5), dtype=np.float32)
+        fx[:, 0] = d_x.ravel()
+        fx[:, 1] = np.repeat(HRs, n_new)
+        fx[:, 2] = np.repeat(DWs, n_new)
+        fx[:, 3] = np.repeat(MOs, n_new)
+        fx[:, 4] = np.tile(prox, len(idxs))
+        att_x = w.model.predict(fx).reshape(len(idxs), n_new)
+        att_x[d_x > MAX_DIST] = np.float32(9e9)
+        free_x: list[list[float]] = [[0.0] * k for k in new_pumps]
+        for f in free_x:
+            heapq.heapify(f)
+
     epochs = inc["epoch"].to_numpy()
     hours = inc["hour"].to_numpy()
     jobs = inc["job_s"].to_numpy()
@@ -239,13 +268,29 @@ def simulate(w: World, posture: Posture, year: int | None = None,
                 att = wait + turnout + travel
                 if att < best_att:
                     best_att, best_j, best_wait = att, int(j), wait
+            if n_new:
+                for m in range(n_new):
+                    base_x = att_x[k, m]
+                    if base_x > 8e8:
+                        continue
+                    if attempt == 0 and p_unavail > 0.0 and w.u01(gi, 5000 + m, 3, seed) < p_unavail:
+                        continue
+                    wait = max(0.0, free_x[m][0] - t)
+                    turnout = w.sample_turnout(10_000 + m, int(hours[k]), int(gi), seed)
+                    travel = max(30.0, float(base_x) + w.sample_residual(float(base_x), 5000 + m, int(gi), seed))
+                    att = wait + turnout + travel
+                    if att < best_att:
+                        best_att, best_j, best_wait = att, len(w.names) + m, wait
             if best_j >= 0:
                 break
         if best_j < 0:  # nothing within validity radius (rare) -> worst candidate anyway
             j = int(w.cand[gi][0])
             best_j, best_att, best_wait = j, float(w.M[gi].min()) + 120.0, 0.0
         # pump busy until: arrival (t + wait + turnout + travel = t + att) + job time
-        heapq.heapreplace(free[best_j], t + best_att + float(jobs[k]))
+        if best_j >= len(w.names):
+            heapq.heapreplace(free_x[best_j - len(w.names)], t + best_att + float(jobs[k]))
+        else:
+            heapq.heapreplace(free[best_j], t + best_att + float(jobs[k]))
         out_att[k] = best_att
         out_wait[k] = best_wait
         out_st[k] = best_j
@@ -256,7 +301,7 @@ def simulate(w: World, posture: Posture, year: int | None = None,
         "actual_s": inc["FirstPumpArriving_AttendanceTime"],
         "sim_s": out_att,
         "waited_s": out_wait,
-        "station": [w.names[i] for i in out_st],
+        "station": [(w.names + new_names)[i] for i in out_st],
         "ward": inc["IncGeo_WardName"],
         "borough": inc["IncGeo_BoroughName"],
     })
