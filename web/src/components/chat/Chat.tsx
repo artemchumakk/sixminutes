@@ -384,9 +384,12 @@ function FireLiveVoice({
     }
   };
 
+  const sawAudioRef = useRef(false);
+
   const send = async () => {
     if (phaseRef.current !== "live") return;
     stopTick();
+    sawAudioRef.current = false; // fresh turn: we don't yet know if audio is coming
     const rec = recRef.current;
     setPhase("thinking");
     const finalize = async () => {
@@ -451,9 +454,25 @@ function FireLiveVoice({
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
-  // resume listening once the agent has finished talking
+  // resume listening once the agent has TRULY finished talking
   useEffect(() => {
-    if (phase === "live") return;
+    if (audioPlaying) sawAudioRef.current = true;
+    if (phase === "live") {
+      // straggler audio arrived after we resumed: pause the take, let it speak
+      if (audioPlaying) {
+        stopTick();
+        try {
+          if (recRef.current?.state === "recording") {
+            recRef.current.onstop = null;
+            recRef.current.stop();
+          }
+        } catch {
+          /* already stopped */
+        }
+        setPhase("speaking");
+      }
+      return;
+    }
     if (audioPlaying) {
       setPhase("speaking");
       return;
@@ -462,9 +481,12 @@ function FireLiveVoice({
       setPhase("thinking");
       return;
     }
+    // queue drained & ask resolved. If audio played this turn, short tail;
+    // if none arrived YET, wait long enough for the TTS to land (then give up).
+    const grace = sawAudioRef.current ? 900 : 4000;
     const t = window.setTimeout(() => {
       if (phaseRef.current !== "live") void startLive();
-    }, 700);
+    }, grace);
     return () => window.clearTimeout(t);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [busy, audioPlaying, phase]);

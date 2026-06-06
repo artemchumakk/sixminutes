@@ -87,6 +87,8 @@ const FireMap = forwardRef<
   const busCursor = useRef<number | null>(null);
   const busTimer = useRef<number | null>(null);
   const voiceAudio = useRef<HTMLAudioElement | null>(null);
+  const audioQueue = useRef<string[]>([]);
+  const audioBusy = useRef(false);
 
   // pulse a marker's radius (close/arrival emphasis)
   const pulse = useCallback((m: L.CircleMarker, scale = 1.9, ms = 480) => {
@@ -315,14 +317,24 @@ const FireMap = forwardRef<
       switch (c.type) {
         case "audio":
           if (c.url) {
-            voiceAudio.current?.pause();
-            const a = new Audio(`${API}${c.url}`);
-            voiceAudio.current = a;
-            a.onplay = () => onAudioStateChange?.(true);
-            a.onended = () => onAudioStateChange?.(false);
-            a.onerror = () => onAudioStateChange?.(false);
-            a.onpause = () => onAudioStateChange?.(false);
-            a.play().catch(() => onAudioStateChange?.(false));
+            // QUEUE segments — never cut one narration with the next
+            audioQueue.current.push(`${API}${c.url}`);
+            onAudioStateChange?.(true);
+            const playNext = () => {
+              const next = audioQueue.current.shift();
+              if (!next) {
+                audioBusy.current = false;
+                onAudioStateChange?.(false);
+                return;
+              }
+              audioBusy.current = true;
+              const a = new Audio(next);
+              voiceAudio.current = a;
+              a.onended = playNext;
+              a.onerror = playNext;
+              a.play().catch(playNext);
+            };
+            if (!audioBusy.current) playNext();
           }
           break;
         case "narrate":
@@ -440,7 +452,13 @@ const FireMap = forwardRef<
     setMsgs((m) => [...m.slice(-7), { id: ++msgId.current, role: "agent", text }]);
   }, []);
   const stopAudio = useCallback(() => {
-    voiceAudio.current?.pause();
+    audioQueue.current = [];
+    audioBusy.current = false;
+    if (voiceAudio.current) {
+      voiceAudio.current.onended = null;
+      voiceAudio.current.onerror = null;
+      voiceAudio.current.pause();
+    }
     onAudioStateChange?.(false);
   }, [onAudioStateChange]);
   useImperativeHandle(handleRef, () => ({ ask, clearChat, note, stopAudio }),
