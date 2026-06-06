@@ -1,6 +1,6 @@
 # Submission — paste-ready
 
-**Project name:** SIXMINUTES — London's Blue-Light Digital Twin
+**Project name:** WARDEN — London's Blue-Light Digital Twin
 **Track:** Urban Operations
 **Repo:** https://github.com/artemchumakk/sixminutes
 **Demo video:** [LINK — add Sunday morning]

@@ -1,9 +1,9 @@
 {
-  "name": "sixminutes-web",
+  "name": "warden-web",
   "private": true,
   "version": "0.1.0",
   "type": "module",
-  "description": "SIXMINUTES dispatcher console (ambulance tier) — agentic + local views",
+  "description": "WARDEN dispatcher console — agentic + local views",
   "scripts": {
     "dev": "vite",
     "build": "tsc -b && vite build",

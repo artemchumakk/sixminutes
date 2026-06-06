@@ -25,7 +25,7 @@ from pydantic import BaseModel, Field
 
 import sim
 
-app = FastAPI(title="SIXMINUTES", version="0.2")
+app = FastAPI(title="WARDEN", version="0.2")
 app.add_middleware(CORSMiddleware, allow_origins=["*"], allow_methods=["*"], allow_headers=["*"])
 ROOT = Path(__file__).parent
 (ROOT / "logs/audio").mkdir(parents=True, exist_ok=True)

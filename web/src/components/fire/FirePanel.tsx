@@ -108,7 +108,7 @@ function Histogram({ result, accent }: { result: ScenarioResult; accent: string 
 function copyBrief(closed: string[], r: ScenarioResult) {
   const scale = r.scale ?? SCALE_FALLBACK;
   const lines = [
-    `SIXMINUTES scenario brief — ${r.window ?? "latest 12 months"}${r.hours ? ` · hours ${r.hours[0]}–${r.hours[1]}` : ""}`,
+    `WARDEN scenario brief — ${r.window ?? "latest 12 months"}${r.hours ? ` · hours ${r.hours[0]}–${r.hours[1]}` : ""}`,
     `Posture: close ${closed.join(", ")}`,
     `Mean attendance: ${fmtS(r.kpi.base.mean_s)} → ${fmtS(r.kpi.scenario.mean_s)} (+${r.city.mean_delta_s}s)`,
     `p90: ${fmtS(r.kpi.base.p90_s)} → ${fmtS(r.kpi.scenario.p90_s)}`,
@@ -128,7 +128,7 @@ function downloadCsv(r: ScenarioResult) {
   const url = URL.createObjectURL(new Blob([rows.join("\n")], { type: "text/csv" }));
   const a = document.createElement("a");
   a.href = url;
-  a.download = "sixminutes_scenario_wards.csv";
+  a.download = "warden_scenario_wards.csv";
   a.click();
   URL.revokeObjectURL(url);
 }

@@ -1,4 +1,4 @@
-// SIXMINUTES backend (FastAPI on :8095) — single source of truth for wiring
+// WARDEN backend (FastAPI on :8095) — single source of truth for wiring
 // ynkvch's UI to the validated twin, one workspace at a time.
 export const API =
   (import.meta as { env?: Record<string, string> }).env?.VITE_SIXMINUTES_API ??
