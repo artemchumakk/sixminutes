@@ -63,8 +63,7 @@ anywhere in the path.
 
 ## Bounty (ElevenLabs / Nemotron)
 
-Brigade Watch: Nemotron agent, ElevenLabs STT+TTS both directions, persistent
-persistent session logs (logs/session_*.jsonl + audio artifacts) — [SUNDAY: real stats],
+Brigade Watch: Nemotron agent, ElevenLabs STT+TTS both directions, persistent session logs (logs/session_*.jsonl + audio artifacts) — [SUNDAY: real stats],
 structured anomaly registry → exact recall of any earlier minute on live questioning.
 
 ## Run it
