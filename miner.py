@@ -94,15 +94,23 @@ FACTS:
 """
 
 
-def main() -> None:
-    facts = gather()
+def ask(model: str, facts: dict, max_tokens: int) -> str:
     r = httpx.post(f"{LLM_BASE}/chat/completions",
                    headers={"Authorization": f"Bearer {LLM_KEY}"},
-                   json={"model": MODEL, "temperature": 0.4, "max_tokens": 1600,
+                   json={"model": model, "temperature": 0.4, "max_tokens": max_tokens,
                          "messages": [{"role": "user", "content": PROMPT + json.dumps(facts, default=str)}]},
                    timeout=300)
     r.raise_for_status()
-    out = r.json()["choices"][0]["message"]["content"]
+    msg = r.json()["choices"][0]["message"]
+    return ((msg.get("content") or "").strip()
+            or (msg.get("reasoning_content") or "").strip())
+
+
+def main() -> None:
+    facts = gather()
+    out = ask(MODEL, facts, 6000)  # reasoning models need headroom before content
+    if not out:
+        out = ask("nvidia/NVIDIA-Nemotron-3-Nano-30B-A3B", facts, 4000)
     Path(ROOT / "docs").mkdir(exist_ok=True)
     (ROOT / "docs/insight_candidates.md").write_text(
         "# Insight candidates (Nemotron-Super-120B over twin outputs)\n\n" + out + "\n\n## Raw facts\n```json\n"
