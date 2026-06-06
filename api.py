@@ -15,6 +15,7 @@ import threading
 import time
 from pathlib import Path
 
+import numpy as np
 import polars as pl
 from fastapi import FastAPI, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
@@ -141,13 +142,62 @@ def validation() -> dict:
 
 
 @app.get("/baseline")
-def baseline() -> dict:
-    b = _baseline(DEFAULT_SAMPLE)
+def baseline(hours: str | None = None) -> dict:
+    hb = tuple(int(x) for x in hours.split(",")) if hours else None
+    b = _baseline(DEFAULT_SAMPLE, "current", hb)
+    s = b["sim_s"]
     return {
         "n": b.height,
-        "mean_s": float(b["sim_s"].mean()),
-        "p90_s": float(b["sim_s"].quantile(0.9)),
+        "window": f"latest {WINDOW_MONTHS} months",
+        "window_n": WINDOW_N,
+        "mean_s": round(float(s.mean()), 1),
+        "median_s": round(float(s.median()), 1),
+        "p90_s": round(float(s.quantile(0.9)), 1),
+        "promise_rate": round(float((s <= 360).mean()), 4),
         "throughput_inc_per_s": sim.METRICS["rate"],
+    }
+
+
+_DAMAGE_CACHE: dict | None = None
+
+
+@app.get("/station/{name}")
+def station_detail(name: str) -> dict:
+    """Analyst inspector: what does this station carry, and what would losing it cost?"""
+    global _DAMAGE_CACHE
+    w = WORLD
+    if name not in w.sidx:
+        raise HTTPException(404, f"unknown station '{name}'")
+    i = w.sidx[name]
+    if _DAMAGE_CACHE is None:
+        p = Path("data/processed/fire_damage_v2.parquet")
+        _DAMAGE_CACHE = (
+            {r["station"]: r for r in pl.read_parquet(p).iter_rows(named=True)}
+            if p.exists() else {}
+        )
+    dmg = _DAMAGE_CACHE.get(name)
+
+    day = w.turnout.get((i, 2))     # 12:00-17:59 pool
+    night = w.turnout.get((i, 0))   # 00:00-05:59 pool
+    base = _baseline(DEFAULT_SAMPLE)
+    mine = base.filter(pl.col("station") == name)
+    wards = (
+        mine.group_by("ward").len().sort("len", descending=True).head(5)["ward"].to_list()
+        if mine.height else []
+    )
+    return {
+        "name": name,
+        "pumps": int(w.pumps[i]),
+        "calls_carried_sample": int(mine.height),
+        "calls_carried_per_yr": int(mine.height * WINDOW_N / DEFAULT_SAMPLE),
+        "turnout_day_med_s": float(np.median(day)) if day is not None and len(day) else None,
+        "turnout_night_med_s": float(np.median(night)) if night is not None and len(night) else None,
+        "ground_wards": wards,
+        "closure": (
+            {"local_added_s": round(dmg["local_added_s"], 1),
+             "pushed_past_6min": int(dmg["pushed_past_6min"]),
+             "city_added_s": round(dmg["city_added_s"], 2)} if dmg else None
+        ),
     }
 
 
@@ -183,9 +233,18 @@ def scenario(s: Scenario) -> dict:
         .sort("delta_mean_s", descending=True)
     )
     affected = by_ward.filter(pl.col("delta_mean_s").abs() > 5)
+
+    # analyst extras: distributions + promise rates (baseline vs scenario)
+    edges = [0, 120, 180, 240, 300, 360, 420, 480, 540, 600, 720, 900]
+    bvals = base["sim_s"].to_numpy()
+    cvals = cf["sim_s"].to_numpy()
+    hist_base = np.histogram(bvals, bins=edges + [1e9])[0].tolist()
+    hist_cf = np.histogram(cvals, bins=edges + [1e9])[0].tolist()
+
     return {
         "posture": {"close": s.close, "pump_delta": s.pump_delta},
         "window": f"latest {WINDOW_MONTHS} months",
+        "hours": s.hours,
         "scale": round(WINDOW_N / s.sample, 3),   # sample -> full-window/yr scaling
         "elapsed_s": round(time.time() - t0, 2),
         "city": {
@@ -193,7 +252,15 @@ def scenario(s: Scenario) -> dict:
             "p90_delta_s": round(float(j["d"].quantile(0.9)), 1),
             "pushed_past_6min": int(j.filter((pl.col("sim_s") > 360) & (pl.col("base_s") <= 360)).height),
         },
-        "worst_wards": affected.head(12).to_dicts(),
+        "kpi": {
+            "base": {"mean_s": round(float(bvals.mean()), 1), "p90_s": round(float(np.quantile(bvals, 0.9)), 1),
+                     "promise_rate": round(float((bvals <= 360).mean()), 4)},
+            "scenario": {"mean_s": round(float(cvals.mean()), 1), "p90_s": round(float(np.quantile(cvals, 0.9)), 1),
+                         "promise_rate": round(float((cvals <= 360).mean()), 4)},
+            "n": int(len(bvals)),
+        },
+        "hist": {"edges": edges, "base": hist_base, "scenario": hist_cf},
+        "worst_wards": affected.head(30).to_dicts(),
         "ward_deltas": {r["ward"]: round(r["delta_mean_s"], 1) for r in by_ward.iter_rows(named=True)},
     }
 

@@ -11,20 +11,45 @@ export interface Station {
   pumps: number;
 }
 
-export interface ScenarioCity {
-  mean_delta_s: number;
-  p90_delta_s: number;
-  pushed_past_6min: number;
+export interface KpiSide {
+  mean_s: number;
+  p90_s: number;
+  promise_rate: number;
 }
 
 export interface ScenarioResult {
-  city: ScenarioCity;
+  city: { mean_delta_s: number; p90_delta_s: number; pushed_past_6min: number };
+  kpi: { base: KpiSide; scenario: KpiSide; n: number };
+  hist: { edges: number[]; base: number[]; scenario: number[] };
   scale?: number;
   elapsed_s: number;
   window?: string;
-  worst_wards: { ward: string; borough: string; delta_mean_s: number }[];
+  hours?: [number, number] | null;
+  worst_wards: { ward: string; borough: string; delta_mean_s: number; n: number; pushed_360: number }[];
   ward_deltas?: Record<string, number>;
 }
+
+export interface BaselineInfo {
+  n: number;
+  window: string;
+  window_n: number;
+  mean_s: number;
+  median_s: number;
+  p90_s: number;
+  promise_rate: number;
+}
+
+export interface StationDetail {
+  name: string;
+  pumps: number;
+  calls_carried_per_yr: number;
+  turnout_day_med_s: number | null;
+  turnout_night_med_s: number | null;
+  ground_wards: string[];
+  closure: { local_added_s: number; pushed_past_6min: number; city_added_s: number } | null;
+}
+
+export type HourBand = [number, number] | null;
 
 export async function fetchStations(): Promise<Station[]> {
   const r = await fetch(`${API}/stations`);
@@ -38,11 +63,24 @@ export async function fetchWardsGeo(): Promise<GeoJSON.FeatureCollection> {
   return r.json();
 }
 
-export async function runScenario(close: string[]): Promise<ScenarioResult> {
+export async function fetchBaseline(hours: HourBand): Promise<BaselineInfo> {
+  const q = hours ? `?hours=${hours[0]},${hours[1]}` : "";
+  const r = await fetch(`${API}/baseline${q}`);
+  if (!r.ok) throw new Error(`baseline: ${r.status}`);
+  return r.json();
+}
+
+export async function fetchStationDetail(name: string): Promise<StationDetail> {
+  const r = await fetch(`${API}/station/${encodeURIComponent(name)}`);
+  if (!r.ok) throw new Error(`station: ${r.status}`);
+  return r.json();
+}
+
+export async function runScenario(close: string[], hours: HourBand): Promise<ScenarioResult> {
   const r = await fetch(`${API}/scenario`, {
     method: "POST",
     headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({ close }),
+    body: JSON.stringify({ close, hours }),
   });
   if (!r.ok) throw new Error(`scenario: ${r.status}`);
   return r.json();

@@ -1,7 +1,18 @@
-import { useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import L from "leaflet";
 import "leaflet/dist/leaflet.css";
-import { fetchStations, fetchWardsGeo, runScenario, type ScenarioResult } from "../../lib/api";
+import {
+  fetchBaseline,
+  fetchStationDetail,
+  fetchStations,
+  fetchWardsGeo,
+  runScenario,
+  type BaselineInfo,
+  type HourBand,
+  type ScenarioResult,
+  type StationDetail,
+} from "../../lib/api";
+import FirePanel from "./FirePanel";
 
 const norm = (s: string) =>
   (s || "")
@@ -11,18 +22,103 @@ const norm = (s: string) =>
     .replace(/\s+/g, " ")
     .trim();
 
-/** The validated fire twin, light-mode, living inside the chat window.
- *  Click stations to close them; the scenario re-runs automatically. */
+/** The validated fire twin as an analytical workspace: light-mode map + analyst panel.
+ *  Click stations to close them; the latest 12 months re-simulate automatically. */
 export default function FireMap({ accent }: { accent: string }) {
   const divRef = useRef<HTMLDivElement>(null);
   const mapRef = useRef<L.Map | null>(null);
   const stationsRef = useRef<Record<string, L.CircleMarker>>({});
   const wardsRef = useRef<Record<string, L.Path>>({});
   const closedRef = useRef<Set<string>>(new Set());
+  const hoursRef = useRef<HourBand>(null);
   const debounceRef = useRef<number | null>(null);
+
+  const [closed, setClosed] = useState<string[]>([]);
+  const [hours, setHours] = useState<HourBand>(null);
+  const [baseline, setBaseline] = useState<BaselineInfo | null>(null);
   const [result, setResult] = useState<ScenarioResult | null>(null);
   const [running, setRunning] = useState(false);
-  const [closedCount, setClosedCount] = useState(0);
+  const [station, setStation] = useState<StationDetail | null>(null);
+
+  const paintStations = useCallback(() => {
+    Object.entries(stationsRef.current).forEach(([name, m]) => {
+      const isClosed = closedRef.current.has(name);
+      m.setStyle({
+        color: isClosed ? "#dc2626" : accent,
+        fillColor: isClosed ? "#dc2626" : accent,
+        fillOpacity: isClosed ? 0.85 : 0.5,
+      });
+    });
+  }, [accent]);
+
+  const paintWards = useCallback((deltas: Record<string, number>) => {
+    Object.values(wardsRef.current).forEach((p) =>
+      p.setStyle({ fillColor: "#fafafa", fillOpacity: 0.4 })
+    );
+    Object.entries(deltas).forEach(([ward, d]) => {
+      const p = wardsRef.current[norm(ward)];
+      if (!p || d < 3) return;
+      p.setStyle({
+        fillColor: d > 60 ? "#dc2626" : d > 20 ? "#f97316" : "#facc15",
+        fillOpacity: Math.min(0.6, 0.2 + d / 150),
+      });
+      p.bindTooltip(`${ward}: +${Math.round(d)}s`, { className: "firemap-tip" });
+    });
+  }, []);
+
+  const run = useCallback(async () => {
+    const names = [...closedRef.current];
+    if (names.length === 0) {
+      setResult(null);
+      paintWards({});
+      return;
+    }
+    setRunning(true);
+    try {
+      const res = await runScenario(names, hoursRef.current);
+      setResult(res);
+      paintWards(res.ward_deltas ?? {});
+    } catch {
+      setResult(null);
+    } finally {
+      setRunning(false);
+    }
+  }, [paintWards]);
+
+  const scheduleRun = useCallback(() => {
+    if (debounceRef.current) window.clearTimeout(debounceRef.current);
+    debounceRef.current = window.setTimeout(run, 650);
+  }, [run]);
+
+  const toggleStation = useCallback(
+    (name: string) => {
+      const next = new Set(closedRef.current);
+      if (next.has(name)) next.delete(name);
+      else {
+        next.add(name);
+        fetchStationDetail(name).then(setStation).catch(() => undefined);
+      }
+      closedRef.current = next;
+      setClosed([...next]);
+      paintStations();
+      scheduleRun();
+    },
+    [paintStations, scheduleRun]
+  );
+
+  const onHours = useCallback(
+    (h: HourBand) => {
+      hoursRef.current = h;
+      setHours(h);
+      fetchBaseline(h).then(setBaseline).catch(() => undefined);
+      scheduleRun();
+    },
+    [scheduleRun]
+  );
+
+  useEffect(() => {
+    fetchBaseline(null).then(setBaseline).catch(() => undefined);
+  }, []);
 
   useEffect(() => {
     if (!divRef.current || mapRef.current) return;
@@ -84,110 +180,27 @@ export default function FireMap({ accent }: { accent: string }) {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
-  function paintStations() {
-    Object.entries(stationsRef.current).forEach(([name, m]) => {
-      const closed = closedRef.current.has(name);
-      m.setStyle({
-        color: closed ? "#dc2626" : accent,
-        fillColor: closed ? "#dc2626" : accent,
-        fillOpacity: closed ? 0.85 : 0.5,
-      });
-    });
-  }
-
-  function paintWards(deltas: Record<string, number>) {
-    Object.values(wardsRef.current).forEach((p) =>
-      p.setStyle({ fillColor: "#fafafa", fillOpacity: 0.4 })
-    );
-    Object.entries(deltas).forEach(([ward, d]) => {
-      const p = wardsRef.current[norm(ward)];
-      if (!p || d < 3) return;
-      p.setStyle({
-        fillColor: d > 60 ? "#dc2626" : d > 20 ? "#f97316" : "#facc15",
-        fillOpacity: Math.min(0.6, 0.2 + d / 150),
-      });
-      p.bindTooltip(`${ward}: +${Math.round(d)}s`, { className: "firemap-tip" });
-    });
-  }
-
-  function toggleStation(name: string) {
-    const next = new Set(closedRef.current);
-    if (next.has(name)) next.delete(name);
-    else next.add(name);
-    closedRef.current = next;
-    setClosedCount(next.size);
-    paintStations();
-    if (debounceRef.current) window.clearTimeout(debounceRef.current);
-    debounceRef.current = window.setTimeout(run, 650);
-  }
-
-  async function run() {
-    const closed = [...closedRef.current];
-    if (closed.length === 0) {
-      setResult(null);
-      paintWards({});
-      return;
-    }
-    setRunning(true);
-    try {
-      const res = await runScenario(closed);
-      setResult(res);
-      paintWards(res.ward_deltas ?? {});
-    } catch {
-      setResult(null);
-    } finally {
-      setRunning(false);
-    }
-  }
-
-  const pushedPerYear =
-    result != null ? Math.round(result.city.pushed_past_6min * (result.scale ?? 3.32)) : 0;
-
   return (
-    <div className="relative h-full w-full">
-      <div ref={divRef} className="h-full w-full" />
-
-      {/* hint / verdict chip — styled with the app's own tokens */}
-      <div className="pointer-events-none absolute left-1/2 top-3 z-[700] -translate-x-1/2">
-        {result == null && !running ? (
-          <div className="rounded-xl border border-neutral-200 bg-white/95 px-3.5 py-2 text-[13px] text-neutral-500 shadow-[0_8px_30px_rgba(0,0,0,0.08)]">
-            {closedCount === 0
-              ? "Click a fire station to close it — the year re-simulates automatically"
-              : "…"}
-          </div>
-        ) : (
-          <div className="flex items-center gap-3 rounded-xl border border-neutral-200 bg-white/95 px-3.5 py-2 text-[13px] text-neutral-700 shadow-[0_8px_30px_rgba(0,0,0,0.08)]">
-            {running ? (
-              <span className="text-neutral-400">simulating a year of London…</span>
-            ) : (
-              result && (
-                <>
-                  <span>
-                    city <b className="text-neutral-900">+{result.city.mean_delta_s}s</b>
-                  </span>
-                  <span>
-                    p90 <b className="text-neutral-900">+{result.city.p90_delta_s}s</b>
-                  </span>
-                  <span>
-                    promise breaks{" "}
-                    <b style={{ color: "#dc2626" }}>{pushedPerYear.toLocaleString()}/yr</b>
-                  </span>
-                  <span className="text-neutral-400">{result.elapsed_s}s</span>
-                </>
-              )
-            )}
+    <div className="flex h-full w-full">
+      <div className="relative min-w-0 flex-1">
+        <div ref={divRef} className="h-full w-full" />
+        {running && (
+          <div className="pointer-events-none absolute left-1/2 top-3 z-[700] -translate-x-1/2 rounded-xl border border-neutral-200 bg-white/95 px-3.5 py-2 text-[13px] text-neutral-500 shadow-[0_8px_30px_rgba(0,0,0,0.08)]">
+            simulating a year of London…
           </div>
         )}
       </div>
-
-      {/* worst ward strip */}
-      {result && result.worst_wards.length > 0 && !running && (
-        <div className="pointer-events-none absolute bottom-3 left-1/2 z-[700] -translate-x-1/2">
-          <div className="rounded-xl border border-neutral-200 bg-white/95 px-3.5 py-2 text-[12.5px] text-neutral-600 shadow-[0_8px_30px_rgba(0,0,0,0.08)]">
-            worst: {result.worst_wards.slice(0, 3).map((w) => `${w.ward} +${Math.round(w.delta_mean_s)}s`).join(" · ")}
-          </div>
-        </div>
-      )}
+      <FirePanel
+        accent={accent}
+        baseline={baseline}
+        hours={hours}
+        onHours={onHours}
+        closed={closed}
+        onReopen={toggleStation}
+        result={result}
+        running={running}
+        station={station}
+      />
     </div>
   );
 }
