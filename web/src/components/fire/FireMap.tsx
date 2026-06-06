@@ -25,7 +25,7 @@ import {
 import FirePanel from "./FirePanel";
 
 export interface FireMapHandle {
-  ask: (text: string) => void;
+  ask: (text: string, speak?: boolean) => void;
   clearChat: () => void;
 }
 
@@ -73,6 +73,7 @@ const FireMap = forwardRef<
   const msgId = useRef(0);
   const busCursor = useRef<number | null>(null);
   const busTimer = useRef<number | null>(null);
+  const voiceAudio = useRef<HTMLAudioElement | null>(null);
 
   const paintStations = useCallback(() => {
     Object.entries(stationsRef.current).forEach(([name, m]) => {
@@ -228,6 +229,13 @@ const FireMap = forwardRef<
     (c: UiCommand) => {
       const map = mapRef.current;
       switch (c.type) {
+        case "audio":
+          if (c.url) {
+            voiceAudio.current?.pause();
+            voiceAudio.current = new Audio(`${API}${c.url}`);
+            voiceAudio.current.play().catch(() => undefined);
+          }
+          break;
         case "narrate":
           if (c.text) {
             setMsgs((m) =>
@@ -286,7 +294,7 @@ const FireMap = forwardRef<
   }, [execCommand, stopBusPolling]);
 
   const ask = useCallback(
-    async (text: string) => {
+    async (text: string, speak = false) => {
       const t = text.trim();
       if (!t) return;
       onBusyChange?.(true);
@@ -299,7 +307,7 @@ const FireMap = forwardRef<
         const tip = await fetchCommands(999_999_999);
         busCursor.current = tip.next;
         startBusPolling();
-        const res = await askAgent(t);
+        const res = await askAgent(t, speak);
         const final =
           res.status === 429
             ? "Hold on — I'm mid-analysis. Ask again in a moment."

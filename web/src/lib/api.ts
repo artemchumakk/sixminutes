@@ -85,14 +85,25 @@ export interface UiCommand {
   url?: string;
 }
 
-export async function askAgent(text: string): Promise<{ answer?: string; detail?: string; status: number }> {
+export async function askAgent(
+  text: string,
+  speak = false
+): Promise<{ answer?: string; detail?: string; status: number }> {
   const r = await fetch(`${API}/ask`, {
     method: "POST",
     headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({ text, speak: false }),
+    body: JSON.stringify({ text, speak }),
   });
   const body = await r.json().catch(() => ({}));
   return { ...body, status: r.status };
+}
+
+export async function transcribeVoice(blob: Blob): Promise<{ text: string }> {
+  const form = new FormData();
+  form.append("file", blob, "voice.webm");
+  const r = await fetch(`${API}/voice/transcribe`, { method: "POST", body: form });
+  if (!r.ok) throw new Error(`transcribe: ${r.status}`);
+  return r.json();
 }
 
 export async function fetchCommands(since: number): Promise<{ next: number; commands: UiCommand[] }> {

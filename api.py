@@ -11,13 +11,14 @@ GET  /layers/{svc}  GeoJSON overlays dropped by service tiers (fire|police|ambul
 from __future__ import annotations
 
 import json
+import os
 import threading
 import time
 from pathlib import Path
 
 import numpy as np
 import polars as pl
-from fastapi import FastAPI, HTTPException
+from fastapi import FastAPI, File, HTTPException, UploadFile
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.staticfiles import StaticFiles
 from pydantic import BaseModel, Field
@@ -390,6 +391,28 @@ def ask(a: Ask) -> dict:
 
 
 INTERESTING_EVENTS = {"notable", "investigation", "experiment", "chapter", "briefing", "analysis"}
+
+
+@app.post("/voice/transcribe")
+def voice_transcribe(file: UploadFile = File(...)) -> dict:
+    """Browser mic blob -> ElevenLabs STT (key stays server-side)."""
+    key = os.environ.get("ELEVENLABS_API_KEY", "")
+    if not key:
+        raise HTTPException(503, "voice not configured on this engine")
+    import httpx
+    data = file.file.read()
+    if len(data) > 10_000_000:
+        raise HTTPException(413, "audio too large")
+    r = httpx.post(
+        "https://api.elevenlabs.io/v1/speech-to-text",
+        headers={"xi-api-key": key},
+        data={"model_id": "scribe_v1"},
+        files={"file": (file.filename or "voice.webm", data, file.content_type or "audio/webm")},
+        timeout=60,
+    )
+    if r.status_code != 200:
+        raise HTTPException(502, f"transcription failed: {r.status_code}")
+    return {"text": r.json().get("text", "")}
 
 
 @app.get("/session/tail")

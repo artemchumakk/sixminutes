@@ -1,6 +1,7 @@
-import { useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import type { ChatMessage, Workspace } from "../../lib/types";
 import { agentReply, SUGGESTIONS } from "../../lib/mock";
+import { transcribeVoice } from "../../lib/api";
 import { cx } from "../ui/primitives";
 import Composer from "./Composer";
 import ResultCard from "./ResultCard";
@@ -39,6 +40,22 @@ export default function Chat({
   useEffect(() => {
     if (ws.id === "fire") onRegisterAsk?.((t) => fireRef.current?.ask(t));
   }, [ws.id, onRegisterAsk]);
+
+  const [voiceErr, setVoiceErr] = useState<string | null>(null);
+  const handleVoiceSend = useCallback(
+    async (blob: Blob) => {
+      onToggleVoice(); // back to the composer immediately; the thread takes over
+      try {
+        const { text } = await transcribeVoice(blob);
+        if (text.trim()) fireRef.current?.ask(text, true);
+        else setVoiceErr("Didn't catch that — try again.");
+      } catch {
+        setVoiceErr("Transcription failed — is the engine running?");
+      }
+      window.setTimeout(() => setVoiceErr(null), 4000);
+    },
+    [onToggleVoice]
+  );
   const scrollRef = useRef<HTMLDivElement>(null);
 
   function addFolder() {
@@ -97,8 +114,8 @@ export default function Chat({
     />
   );
 
-  // ---- voice mode (PREVIEW for ElevenLabs) ----
-  if (voiceActive) {
+  // ---- voice mode (PREVIEW for ElevenLabs) — fire has the real one below ----
+  if (voiceActive && ws.id !== "fire") {
     return (
       <div className="flex h-full flex-col">
         <div className="flex flex-1 items-center justify-center px-4">
@@ -181,7 +198,6 @@ export default function Chat({
         header={transcript}
         hideAttach
         hideFolder
-        hideMic
         staticModel
       />
     );
@@ -200,7 +216,18 @@ export default function Chat({
             (fireAnalysing ? "right-[336px]" : "right-0")
           }
         >
-          <div className="pointer-events-auto mx-auto w-full max-w-3xl">{fireComposer}</div>
+          <div className="pointer-events-auto mx-auto w-full max-w-3xl">
+            {voiceErr && (
+              <div className="mb-2 w-fit rounded-full border border-neutral-200 bg-white/95 px-3.5 py-1.5 text-[12.5px] text-neutral-500 shadow-sm">
+                {voiceErr}
+              </div>
+            )}
+            {voiceActive ? (
+              <FireVoiceBar accent={ws.accent} onSend={handleVoiceSend} onCancel={onToggleVoice} />
+            ) : (
+              fireComposer
+            )}
+          </div>
         </div>
       </div>
     );
@@ -246,6 +273,73 @@ export default function Chat({
       </div>
     </div>
   );
+}
+
+/** Real mic capture wearing ynkvch's RecordingBar. Stop = send. */
+function FireVoiceBar({
+  accent,
+  onSend,
+  onCancel,
+}: {
+  accent: string;
+  onSend: (blob: Blob) => void;
+  onCancel: () => void;
+}) {
+  const recRef = useRef<MediaRecorder | null>(null);
+  const sendRef = useRef(onSend);
+  const cancelRef = useRef(onCancel);
+  sendRef.current = onSend;
+  cancelRef.current = onCancel;
+  const [err, setErr] = useState(false);
+
+  useEffect(() => {
+    let alive = true;
+    let stream: MediaStream | null = null;
+    const chunks: BlobPart[] = [];
+    navigator.mediaDevices
+      .getUserMedia({ audio: true })
+      .then((s) => {
+        if (!alive) {
+          s.getTracks().forEach((t) => t.stop());
+          return;
+        }
+        stream = s;
+        const rec = new MediaRecorder(s);
+        recRef.current = rec;
+        rec.ondataavailable = (e) => {
+          if (e.data.size) chunks.push(e.data);
+        };
+        rec.onstop = () => {
+          s.getTracks().forEach((t) => t.stop());
+          const blob = new Blob(chunks, { type: rec.mimeType || "audio/webm" });
+          if (blob.size > 800) sendRef.current(blob);
+          else cancelRef.current();
+        };
+        rec.start();
+      })
+      .catch(() => setErr(true));
+    return () => {
+      alive = false;
+      try {
+        if (recRef.current?.state === "recording") recRef.current.stop();
+        stream?.getTracks().forEach((t) => t.stop());
+      } catch {
+        /* already stopped */
+      }
+    };
+  }, []);
+
+  if (err) {
+    return (
+      <div className="flex items-center justify-between rounded-[26px] border border-neutral-200 bg-white px-4 py-3 text-[13.5px] text-neutral-500 shadow-[0_1px_2px_rgba(0,0,0,0.04)]">
+        Microphone unavailable — check browser permissions.
+        <button onClick={onCancel} className="rounded-lg px-2 py-1 text-neutral-600 hover:bg-neutral-100">
+          back
+        </button>
+      </div>
+    );
+  }
+  return <RecordingBar accent={accent} onStop={() => recRef.current?.stop()} />;
 }
 
 function Bubble({ msg, ws }: { msg: ChatMessage; ws: Workspace }) {

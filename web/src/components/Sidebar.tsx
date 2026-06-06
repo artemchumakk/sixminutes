@@ -98,11 +98,9 @@ export default function Sidebar({
               Search
             </Item>
           )}
-          {!fire && (
-            <Item icon={<Waveform size={18} />} onClick={onVoice}>
-              Voice agent
-            </Item>
-          )}
+          <Item icon={<Waveform size={18} />} onClick={onVoice}>
+            Voice agent
+          </Item>
         </nav>
 
         {!fire && (
