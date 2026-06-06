@@ -41,6 +41,8 @@ export interface FireMsg {
   pending?: boolean;
 }
 
+const TTS_RATE = 1.2; // brisk but natural (pitch preserved); 1.0–1.3 sane range
+
 const norm = (s: string) =>
   (s || "")
     .toUpperCase()
@@ -362,10 +364,15 @@ const FireMap = forwardRef<
               const a = new Audio();
               a.crossOrigin = "anonymous";
               a.src = next.url;
+              a.playbackRate = TTS_RATE;
               voiceAudio.current = a;
               a.onloadedmetadata = () => {
                 if (next.text) {
-                  setSpeakSeg({ text: next.text, dur: Math.max(600, a.duration * 1000), t0: performance.now() });
+                  setSpeakSeg({
+                    text: next.text,
+                    dur: Math.max(600, (a.duration * 1000) / TTS_RATE),
+                    t0: performance.now(),
+                  });
                 }
               };
               a.onended = playNext;
