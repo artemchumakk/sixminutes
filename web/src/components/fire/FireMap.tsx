@@ -188,19 +188,19 @@ export default function FireMap({ accent }: { accent: string }) {
 
       {/* quiet hint — the only chrome before an analysis begins */}
       {!analysing && (
-        <div className="pointer-events-none absolute left-1/2 top-5 z-10 -translate-x-1/2 rounded-full border border-neutral-200 bg-white/90 px-4 py-1.5 text-[12.5px] text-neutral-500 shadow-[0_2px_12px_rgba(0,0,0,0.06)] backdrop-blur-sm">
+        <div className="pointer-events-none absolute left-1/2 top-5 z-[1100] -translate-x-1/2 rounded-full border border-neutral-200 bg-white/90 px-4 py-1.5 text-[12.5px] text-neutral-500 shadow-[0_2px_12px_rgba(0,0,0,0.06)] backdrop-blur-sm">
         click a fire station to start an analysis
         </div>
       )}
       {running && (
-        <div className="pointer-events-none absolute left-1/2 top-5 z-10 -translate-x-1/2 rounded-full border border-neutral-200 bg-white/90 px-4 py-1.5 text-[12.5px] text-neutral-500 shadow-[0_2px_12px_rgba(0,0,0,0.06)] backdrop-blur-sm">
+        <div className="pointer-events-none absolute left-1/2 top-5 z-[1100] -translate-x-1/2 rounded-full border border-neutral-200 bg-white/90 px-4 py-1.5 text-[12.5px] text-neutral-500 shadow-[0_2px_12px_rgba(0,0,0,0.06)] backdrop-blur-sm">
           simulating a year of London…
         </div>
       )}
 
       {/* analytics: appears only once an analysis is live */}
       {analysing && (
-        <div className="absolute bottom-24 right-3 top-14 z-10 w-[320px]">
+        <div className="absolute bottom-24 right-3 top-14 z-[1100] w-[320px]">
           <FirePanel
             accent={accent}
             baseline={baseline}

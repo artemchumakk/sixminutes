@@ -104,7 +104,7 @@ export default function Chat({
     return (
       <div className="relative h-full w-full">
         <FireMap accent={ws.accent} />
-        <div className="pointer-events-none absolute bottom-4 left-0 right-0 z-10 px-4">
+        <div className="pointer-events-none absolute bottom-4 left-0 right-0 z-[1100] px-4">
           <div className="pointer-events-auto mx-auto w-full max-w-3xl">{composer}</div>
         </div>
       </div>

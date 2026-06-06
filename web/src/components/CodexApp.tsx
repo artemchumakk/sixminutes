@@ -39,7 +39,7 @@ export default function CodexApp({ ws, onExit }: { ws: Workspace; onExit: () => 
         <header
           className={
             ws.id === "fire" && view === "chat"
-              ? "absolute right-0 top-0 z-20 flex h-14 items-center justify-end px-4"
+              ? "absolute right-0 top-0 z-[1100] flex h-14 items-center justify-end px-4"
               : "flex h-14 shrink-0 items-center justify-end px-4"
           }
         >
