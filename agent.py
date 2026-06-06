@@ -379,6 +379,9 @@ def patrol(speak: bool, accel: int = 60) -> None:
         ("2014 closures", "FINDING: The 2014 LSP5 closures (Clerkenwell, Westminster, Southwark, Belsize, Kingsland, Knightsbridge, Downham, Woolwich, Bow, Silvertown) measurably cost +63s in their former grounds; the twin, never shown pre-2021 data, predicts -52s recovery if reopened - independent convergence."),
         ("Dagenham", "FINDING: Night turnout penalty is station-specific: Dagenham jumps 80s (day) to 127s (night), +47s; city-wide median turnout is +38s slower at night."),
         ("London", "FINDING: Simulator validated on held-out 2025: mean +2.4%, p90 -3.7%; replays a year of London (130k incidents) in ~3s at ~40k incidents/sec."),
+        ("AFA buildings", "FINDING: Non-residential false alarms cost GBP 5.0M/yr in pump time; 39 buildings trigger at least monthly; worst is an NW1 hospital with 61 false-alarm responses in 12 months (GBP 25,685)."),
+        ("Suburbs", "FINDING: Counter-intuitive - 10+ storey towers get FASTER first pumps (mean 307s) than single houses (352s, p90 512s): density beats height; the 6-minute promise breaks in outer low-rise London, not the towers."),
+        ("Cover moves", "FINDING: LFB made 7,288 real non-home-station deployments in the latest 12 months (3.5% of mobilisations) - the cover-move recommender formalizes this existing daily practice with simulation math."),
     ]:
         seed("analysis", loc, "info", narr)
     if speak:
