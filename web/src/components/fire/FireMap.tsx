@@ -26,9 +26,10 @@ import FirePanel from "./FirePanel";
 
 export interface FireMapHandle {
   ask: (text: string) => void;
+  clearChat: () => void;
 }
 
-interface FireMsg {
+export interface FireMsg {
   id: number;
   role: "user" | "agent";
   text: string;
@@ -51,8 +52,9 @@ const FireMap = forwardRef<
     accent: string;
     onAnalysingChange?: (analysing: boolean) => void;
     onBusyChange?: (busy: boolean) => void;
+    onMessagesChange?: (msgs: FireMsg[]) => void;
   }
->(function FireMap({ accent, onAnalysingChange, onBusyChange }, handleRef) {
+>(function FireMap({ accent, onAnalysingChange, onBusyChange, onMessagesChange }, handleRef) {
   const divRef = useRef<HTMLDivElement>(null);
   const mapRef = useRef<L.Map | null>(null);
   const stationsRef = useRef<Record<string, L.CircleMarker>>({});
@@ -323,8 +325,12 @@ const FireMap = forwardRef<
     [onBusyChange, startBusPolling, stopBusPolling]
   );
 
-  useImperativeHandle(handleRef, () => ({ ask }), [ask]);
+  const clearChat = useCallback(() => setMsgs([]), []);
+  useImperativeHandle(handleRef, () => ({ ask, clearChat }), [ask, clearChat]);
   useEffect(() => stopBusPolling, [stopBusPolling]);
+  useEffect(() => {
+    onMessagesChange?.(msgs);
+  }, [msgs, onMessagesChange]);
 
   const analysing = closed.length > 0;
 
@@ -345,44 +351,6 @@ const FireMap = forwardRef<
       {running && (
         <div className="pointer-events-none absolute left-1/2 top-5 z-[1100] -translate-x-1/2 rounded-full border border-neutral-200 bg-white/90 px-4 py-1.5 text-[12.5px] text-neutral-500 shadow-[0_2px_12px_rgba(0,0,0,0.06)] backdrop-blur-sm">
           simulating a year of London…
-        </div>
-      )}
-
-      {/* conversation over the canvas — last few exchanges, agent updates live */}
-      {msgs.length > 0 && (
-        <div
-          className={
-            "pointer-events-none absolute bottom-24 left-0 z-[1090] px-4 transition-[right] duration-300 " +
-            (analysing ? "right-[336px]" : "right-0")
-          }
-        >
-          <div className="mx-auto flex w-full max-w-3xl flex-col gap-2.5">
-            {msgs.slice(-4).map((m) =>
-              m.role === "user" ? (
-                <div key={m.id} className="flex justify-end">
-                  <div className="max-w-[75%] rounded-3xl rounded-br-lg border border-neutral-200/60 bg-neutral-100/95 px-4 py-2 text-[14px] leading-6 text-neutral-900 shadow-[0_2px_12px_rgba(0,0,0,0.06)] backdrop-blur-sm">
-                    {m.text}
-                  </div>
-                </div>
-              ) : (
-                <div key={m.id} className="flex gap-2.5">
-                  <div
-                    className="mt-0.5 flex h-7 w-7 shrink-0 items-center justify-center rounded-full border border-neutral-200 bg-white/95 text-[13px] shadow-sm"
-                    style={{ color: accent }}
-                  >
-                    ✦
-                  </div>
-                  <div className="max-w-[80%] rounded-2xl border border-neutral-200/60 bg-white/95 px-3.5 py-2 text-[14px] leading-6 text-neutral-800 shadow-[0_2px_12px_rgba(0,0,0,0.06)] backdrop-blur-sm">
-                    {m.pending && m.text === "" ? (
-                      <span className="text-neutral-400">Thinking…</span>
-                    ) : (
-                      m.text
-                    )}
-                  </div>
-                </div>
-              )
-            )}
-          </div>
         </div>
       )}
 
