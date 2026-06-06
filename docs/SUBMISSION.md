@@ -35,6 +35,12 @@ Headline findings, all computed this weekend from open data:
 - Night turnout penalty is station-specific (Dagenham +47s); 44.8% of incidents are
   false alarms consuming ~684k pump-minutes/yr in non-residential AFAs alone.
 
+Beyond planning, the twin does real-time repositioning: tell it "Croydon's pumps
+just committed — best cover move?" and it sweeps ~20 candidate pump moves through
+the simulator (night-map aware via hour-band replay) and answers in ~45 seconds:
+"Bromley to Croydon — 153 of 171 promise-breaks avoided tonight." Cover moves are
+how LFB actually operates daily; today they're made by gut feel.
+
 The interface is an operations dashboard (close stations on a map, watch a year of
 London re-dispatch in ~1 second) and "Brigade Watch" — a Nemotron agent with
 ElevenLabs voice in/out that operates the simulator by conversation, runs SQL over

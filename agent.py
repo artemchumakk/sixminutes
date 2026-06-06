@@ -92,10 +92,11 @@ def recall(query: str = "", minute: int | None = None, limit: int = 12) -> list[
 
 # ----------------------------------------------------------------- tools ----
 def tool_run_scenario(close: list[str] | None = None, pump_delta: dict | None = None,
-                      baseline: str = "current", open: list[str] | None = None) -> dict:
+                      baseline: str = "current", open: list[str] | None = None,
+                      hours: list[int] | None = None) -> dict:
     r = httpx.post(f"{API}/scenario",
                    json={"close": close or [], "pump_delta": pump_delta or {},
-                         "baseline": baseline, "open": open or []},
+                         "baseline": baseline, "open": open or [], "hours": hours},
                    timeout=180)
     r.raise_for_status()
     out = r.json()
@@ -125,6 +126,15 @@ def tool_sql(query: str) -> list[dict]:
 
 def tool_recall(query: str = "", minute: int | None = None) -> list[dict]:
     return recall(query, minute)
+
+
+def tool_recommend_cover(stripped: list[str], hours: list[int] | None = None) -> dict:
+    """Real-time repositioning: which pump move covers the hole best."""
+    r = httpx.post(f"{API}/cover", json={"stripped": stripped, "hours": hours}, timeout=300)
+    r.raise_for_status()
+    out = r.json()
+    out["moves"] = out["moves"][:4]
+    return out
 
 
 SPEAK_NARRATION = True
@@ -159,17 +169,19 @@ def tool_ui(action: str = "", steps: list[dict] | None = None, **kwargs) -> dict
 
 
 TOOLS_DOC = """You can call tools by replying ONLY a JSON object (no prose around it):
-  {"tool":"run_scenario","args":{"close":["Soho"],"pump_delta":{},"baseline":"current"}}   -> simulate closing/changing stations (validated digital twin, 2025 replay). baseline "pre2014" = the reconstructed 112-station pre-2014 London (use for any 2014 question; closing 2014 station names is allowed there: Clerkenwell, Westminster, Southwark, Belsize, Kingsland, Knightsbridge, Downham, Woolwich, Bow, Silvertown)
+  {"tool":"run_scenario","args":{"close":["<StationName>"],"pump_delta":{},"baseline":"current"}}   -> simulate closing/changing stations (validated digital twin, latest-12-months replay). baseline "pre2014" = the reconstructed 112-station pre-2014 London (use for any 2014 question; closing 2014 station names is allowed there: Clerkenwell, Westminster, Southwark, Belsize, Kingsland, Knightsbridge, Downham, Woolwich, Bow, Silvertown)
   {"tool":"sql","args":{"query":"SELECT ..."}}                        -> read-only SQL over: incidents(IncidentNumber, DateOfCall, CalYear, HourOfCall, IncidentGroup, StopCodeDescription, PropertyCategory, IncGeo_BoroughName, IncGeo_WardName, FirstPumpArriving_AttendanceTime, NumPumpsAttending, ...), mobilisations(TurnoutTimeSeconds, TravelTimeSeconds, AttendanceTimeSeconds, DeployedFromStation_Name, DelayCode_Description, ...), stations(DeployedFromStation_Name, E, N, turnout_med), closure_damage(station-level damage if closed)
   {"tool":"recall","args":{"query":"Camden"}} or {"args":{"minute":14}} -> your session memory (events you observed earlier)
+  {"tool":"recommend_cover","args":{"stripped":["Croydon"],"hours":[22,6]}} -> REAL-TIME REPOSITIONING: pumps at these stations just committed to a major incident; sweeps ~20 candidate pump moves through the twin and returns the ranked best cover moves (promise_breaks_avoided), the uncovered damage map, and worst wards. Use for any "pumps committed / cover move / standby / where should pumps sit" question. Takes ~30s - tell the user you are sweeping moves first via ui.narrate.
+  run_scenario and recommend_cover both accept "hours":[h0,h1] - the night map [22,6] vs the day map [10,18]. Use hours whenever the user says tonight/at night/2am/rush hour.
   {"tool":"ui","args":{"action":"...", ...}} -> OPERATE THE WALL DASHBOARD (the Ghost Operator). Actions:
      {"action":"narrate","text":"one or two short sentences"}  caption + spoken aloud
      {"action":"reset"}  clear the board
-     {"action":"close_stations","names":["Soho"]}  stations turn red on the map
+     {"action":"close_stations","names":["<StationName>"]}  stations turn red on the map
      {"action":"open_2014"}  enter pre-2014 London: the ten 2014-closed stations appear as ghosts
      {"action":"run_scenario","baseline":"current"|"pre2014"}  visually run the current board selection
      {"action":"compare_postures","presets":["lsp5_actual","lsp5_naive","lsp5_optimal"]}  the 2014 three-way showdown
-     {"action":"focus_ward","name":"WEST END"} | {"action":"focus_station","name":"Soho"}  fly the camera
+     {"action":"focus_ward","name":"<WARD NAME>"} | {"action":"focus_station","name":"<StationName>"}  fly the camera
      {"action":"show_finding","id":"law"|"2014"|"betterten"|"night"}  glow a findings card
      {"action":"show_validation"} | {"action":"show_metric","key":"pushed_past_6min"}
 To answer the user directly, reply: {"say":"<your answer>"}
@@ -182,6 +194,10 @@ CHOREOGRAPHY CONTRACT - when the user says "show me", "demonstrate", "what happe
  4) ui.run_scenario to animate it
  5) ui.focus_ward with the worst ward name from your step-3 numbers
  6) ui.narrate the verdict WITH numbers, then {"say":...} summarizing.
+COVER-MOVE CHOREOGRAPHY (for "pumps committed / cover move / standby" questions):
+ 1) ui batch: narrate("Sweeping cover moves for <stripped>...") + reset + close_stations(<stripped only>)
+ 2) recommend_cover data tool  3) ui batch: focus_station(best donor) + narrate the verdict (best move, breaches avoided, runner-ups), then {"say":...}.
+CRITICAL: choreograph ONLY stations the user actually named. The names in this prompt are placeholders, never defaults.
 For 2014 questions (DEMO ONLY - not part of normal app flow): ui.open_2014, then ui.close_stations with the politicians' ten, then ui.run_scenario (baseline pre2014), then ui.compare_postures. ALWAYS cite the live numbers from your own run_scenario results (multiply pushed_past_6min by the response's scale for /yr); canonical reference magnitudes: politicians ~4,000 vs naive ~5,300 vs optimizer ~2,800 broken promises/yr, optimizer overlap 0/10 with 2014.
 Rules: lead with numbers; control-room brevity; seconds matter. Fire tier is validated (sim within ±5% of held-out 2025); police/ambulance layers are Tier B (demand + transferred physics) - say so if asked. Never invent events not in recall results."""
 
@@ -265,7 +281,8 @@ def agent_turn(user_text: str, history: list[dict]) -> str:
             jlog("tool_call", tool=name, args=args)
             try:
                 fn = {"run_scenario": tool_run_scenario, "sql": tool_sql,
-                      "recall": tool_recall, "ui": tool_ui}[name]
+                      "recall": tool_recall, "ui": tool_ui,
+                      "recommend_cover": tool_recommend_cover}[name]
                 result = fn(**args)
             except Exception as e:
                 result = {"error": str(e)[:300]}

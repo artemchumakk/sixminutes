@@ -48,6 +48,7 @@ class Scenario(BaseModel):
     open: list[str] = Field(default_factory=list)        # names from LSP5 catalogue
     pump_delta: dict[str, int] = Field(default_factory=dict)
     baseline: str = Field(default="current", pattern="^(current|pre2014)$")
+    hours: list[int] | None = Field(default=None, min_length=2, max_length=2)  # [22,6] = night map
     sample: int = Field(default=DEFAULT_SAMPLE, ge=5_000, le=140_000)
 
 
@@ -60,14 +61,15 @@ WINDOW_MONTHS = 12      # the product replays the freshest 12 months of London
 WINDOW_N = 0            # total incidents in that window (set at startup)
 
 
-def _baseline(n: int, world: str = "current") -> pl.DataFrame:
+def _baseline(n: int, world: str = "current",
+              hours: tuple[int, int] | None = None) -> pl.DataFrame:
     with LOCK:
-        key = (n, world)
+        key = (n, world, hours)
         if key not in BASELINE:
             posture = (sim.Posture() if world == "current"
                        else _posture([], list(LSP5.keys()), {}))
             BASELINE[key] = sim.simulate(WORLD, posture, latest_months=WINDOW_MONTHS,
-                                         sample=n, seed=14, p_unavail=P_UNAVAIL)
+                                         sample=n, seed=14, p_unavail=P_UNAVAIL, hours=hours)
         return BASELINE[key]
 
 
@@ -157,7 +159,8 @@ def scenario(s: Scenario) -> dict:
     if unknown:
         raise HTTPException(400, f"unknown stations: {unknown}; see GET /stations")
     t0 = time.time()
-    base = _baseline(s.sample, s.baseline)
+    hours = tuple(s.hours) if s.hours else None
+    base = _baseline(s.sample, s.baseline, hours)
     # closing a 2014 station in pre2014 world = omit it from the opened set
     if s.baseline == "pre2014":
         open_set = [n for n in LSP5 if n not in s.close]
@@ -165,7 +168,7 @@ def scenario(s: Scenario) -> dict:
         open_set = [n for n in s.open if n not in s.close]
     posture = _posture([c for c in s.close if c in w.sidx], open_set, s.pump_delta)
     cf = sim.simulate(w, posture, latest_months=WINDOW_MONTHS, sample=s.sample,
-                      seed=14, p_unavail=P_UNAVAIL)
+                      seed=14, p_unavail=P_UNAVAIL, hours=hours)
     j = base.select("IncidentNumber", base_s=pl.col("sim_s")).join(
         cf.select("IncidentNumber", "sim_s", "ward", "borough"), on="IncidentNumber"
     ).with_columns(d=pl.col("sim_s") - pl.col("base_s"))
@@ -190,6 +193,71 @@ def scenario(s: Scenario) -> dict:
         },
         "worst_wards": affected.head(12).to_dicts(),
         "ward_deltas": {r["ward"]: round(r["delta_mean_s"], 1) for r in by_ward.iter_rows(named=True)},
+    }
+
+
+class Cover(BaseModel):
+    stripped: list[str]                                   # stations with pumps committed
+    hours: list[int] | None = Field(default=None, min_length=2, max_length=2)
+    donors: int = Field(default=20, ge=4, le=40)          # nearest-N candidate donors
+    sample: int = Field(default=DEFAULT_SAMPLE, ge=5_000, le=140_000)
+
+
+@app.post("/cover")
+def cover(c: Cover) -> dict:
+    """Real-time repositioning: pumps at `stripped` are committed — which single
+    pump move best protects London right now? Sweeps nearest donors, ranks by
+    promise-breaks avoided. (~1s per candidate.)"""
+    w = WORLD
+    unknown = [x for x in c.stripped if x not in w.sidx]
+    if unknown:
+        raise HTTPException(400, f"unknown stations: {unknown}")
+    t0 = time.time()
+    hours = tuple(c.hours) if c.hours else None
+    base = _baseline(c.sample, "current", hours)
+    base_pushed = 0  # baseline has none pushed vs itself by definition
+
+    # the bleeding state: stripped stations' pumps all committed
+    strip_delta = {s: -int(w.pumps[w.sidx[s]]) for s in c.stripped}
+    stripped_run = sim.simulate(w, sim.Posture(pump_delta=strip_delta),
+                                latest_months=WINDOW_MONTHS, sample=c.sample,
+                                seed=14, p_unavail=P_UNAVAIL, hours=hours)
+    s_pushed = int(((stripped_run["sim_s"] > 360) & (base["sim_s"] <= 360)).sum())
+
+    # candidate donors: nearest N stations to the (first) stripped house, that have pumps
+    tgt = c.stripped[0]
+    ti = w.sidx[tgt]
+    d2 = (w.SE - w.SE[ti]) ** 2 + (w.SN - w.SN[ti]) ** 2
+    order = [w.names[i] for i in d2.argsort() if w.names[i] not in c.stripped][:c.donors]
+
+    moves = []
+    for donor in order:
+        delta = dict(strip_delta)
+        delta[donor] = delta.get(donor, 0) - 1
+        delta[tgt] = delta.get(tgt, 0) + 1          # donor pump relocates into the empty house
+        run = sim.simulate(w, sim.Posture(pump_delta=delta),
+                           latest_months=WINDOW_MONTHS, sample=c.sample,
+                           seed=14, p_unavail=P_UNAVAIL, hours=hours)
+        m_pushed = int(((run["sim_s"] > 360) & (base["sim_s"] <= 360)).sum())
+        moves.append({"from": donor, "to": tgt,
+                      "pushed_with_move": m_pushed,
+                      "promise_breaks_avoided": s_pushed - m_pushed})
+    moves.sort(key=lambda m: -m["promise_breaks_avoided"])
+
+    worst = (stripped_run.with_columns(d=stripped_run["sim_s"] - base["sim_s"])
+             .group_by("ward").agg(d=pl.col("d").mean(), n=pl.len())
+             .filter(pl.col("n") >= 10).sort("d", descending=True).head(5))
+    return {
+        "stripped": c.stripped,
+        "hours": c.hours,
+        "elapsed_s": round(time.time() - t0, 1),
+        "scale": round(WINDOW_N / c.sample, 3),
+        "uncovered": {"pushed_past_6min": s_pushed,
+                      "worst_wards": [{"ward": r["ward"], "added_s": round(r["d"], 1)}
+                                       for r in worst.iter_rows(named=True)]},
+        "best_move": moves[0] if moves else None,
+        "moves": moves[:8],
+        "note": "replayed posture math on the latest 12 months; plug in live CAD and this runs for real",
     }
 
 

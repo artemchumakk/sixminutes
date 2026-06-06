@@ -184,26 +184,29 @@ class World:
 
 def simulate(w: World, posture: Posture, year: int | None = None,
              sample: int | None = None, seed: int = 14,
-             p_unavail: float = 0.0, latest_months: int | None = None) -> pl.DataFrame:
+             p_unavail: float = 0.0, latest_months: int | None = None,
+             hours: tuple[int, int] | None = None) -> pl.DataFrame:
     """Event-driven replay. Returns [IncidentNumber, sim_att_s, waited_s, station].
 
     p_unavail: prob a candidate station can't take the call (training, standby
     moves, out-positioning) — the single calibration knob, fit on 2024 only.
     latest_months: replay the freshest N months of data (the product mode);
     `year` remains for the blind-validation science runs.
+    hours: restrict the replay to an hour band, e.g. (22, 6) = the night map.
     """
     rng = np.random.default_rng(seed)
-    idxs = np.arange(w.inc.height)
+    mask = np.ones(w.inc.height, dtype=bool)
     if latest_months is not None:
         cutoff = w.inc["t0"].max() - timedelta(days=int(latest_months * 30.44))
-        mask = (w.inc["t0"] > cutoff).to_numpy()
-        idxs = idxs[mask]
-        inc = w.inc.filter(pl.Series(mask))
+        mask &= (w.inc["t0"] > cutoff).to_numpy()
     elif year is not None:
-        idxs = idxs[(w.inc["t0"].dt.year() == year).to_numpy()]
-        inc = w.inc.filter(pl.col("t0").dt.year() == year)
-    else:
-        inc = w.inc
+        mask &= (w.inc["t0"].dt.year() == year).to_numpy()
+    if hours is not None:
+        h0, h1 = int(hours[0]) % 24, int(hours[1]) % 24
+        hh = w.inc["hour"].to_numpy()
+        mask &= ((hh >= h0) & (hh < h1)) if h0 < h1 else ((hh >= h0) | (hh < h1))  # wraps midnight
+    idxs = np.arange(w.inc.height)[mask]
+    inc = w.inc.filter(pl.Series(mask))
     if sample is not None and len(idxs) > sample:
         keep = np.sort(rng.choice(len(idxs), sample, replace=False))
         idxs = idxs[keep]
