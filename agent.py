@@ -404,7 +404,21 @@ def main() -> None:
     ap.add_argument("--voice", action="store_true")
     ap.add_argument("--patrol", action="store_true")
     ap.add_argument("--speak", action="store_true")
+    ap.add_argument("--briefing", action="store_true",
+                    help="compose the shift handover from the registry (Sunday 08:00)")
     a = ap.parse_args()
+    if a.briefing:
+        rows = recall("", minute=None, limit=60)
+        brief = llm([{"role": "system", "content":
+                      "You are Brigade Watch writing your overnight shift handover for the duty officer. "
+                      "3 short paragraphs: (1) the night's notable incidents, (2) your investigations and "
+                      "autonomous experiments with their numbers, (3) recommendations. Control-room style."},
+                     {"role": "user", "content": json.dumps(rows, default=str)}], max_tokens=2000)
+        remember("briefing", "London", "info", brief[:1500])
+        print(brief)
+        if a.speak:
+            tts(brief[:600], play=False)
+        return
     history: list[dict] = []
     if a.ask:
         print(agent_turn(a.ask, history))
