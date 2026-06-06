@@ -158,6 +158,8 @@ def scenario(s: Scenario) -> dict:
     unknown += [x for x in s.open if x not in LSP5]
     if unknown:
         raise HTTPException(400, f"unknown stations: {unknown}; see GET /stations")
+    if len(s.close) > 40:
+        raise HTTPException(400, "closing more than 40 stations is not a scenario, it's an apocalypse — pick a realistic posture")
     t0 = time.time()
     hours = tuple(s.hours) if s.hours else None
     base = _baseline(s.sample, s.baseline, hours)

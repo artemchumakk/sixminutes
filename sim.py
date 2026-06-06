@@ -301,8 +301,9 @@ def simulate(w: World, posture: Posture, year: int | None = None,
             best_j, best_att, best_wait = j, float(w.M[gi].min()) + 120.0, 0.0
         # pump busy until: arrival (t + wait + turnout + travel = t + att) + job time
         if best_j >= len(w.names):
-            heapq.heapreplace(free_x[best_j - len(w.names)], t + best_att + float(jobs[k]))
-        else:
+            if free_x[best_j - len(w.names)]:
+                heapq.heapreplace(free_x[best_j - len(w.names)], t + best_att + float(jobs[k]))
+        elif free[best_j]:  # last-resort fallback can pick a 0-pump station; skip busy-tracking
             heapq.heapreplace(free[best_j], t + best_att + float(jobs[k]))
         out_att[k] = best_att
         out_wait[k] = best_wait

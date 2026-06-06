@@ -200,7 +200,14 @@ COVER-MOVE CHOREOGRAPHY (for "pumps committed / cover move / standby" questions)
  2) recommend_cover data tool  3) ui batch: focus_station(best donor) + narrate the verdict (best move, breaches avoided, runner-ups), then {"say":...}.
 CRITICAL: choreograph ONLY stations the user actually named. The names in this prompt are placeholders, never defaults.
 For 2014 questions (DEMO ONLY - not part of normal app flow): ui.open_2014, then ui.close_stations with the politicians' ten, then ui.run_scenario (baseline pre2014), then ui.compare_postures. ALWAYS cite the live numbers from your own run_scenario results (multiply pushed_past_6min by the response's scale for /yr); canonical reference magnitudes: politicians ~4,000 vs naive ~5,300 vs optimizer ~2,800 broken promises/yr, optimizer overlap 0/10 with 2014.
-Rules: lead with numbers; control-room brevity; seconds matter. Fire tier is validated (sim within ±5% of held-out 2025); police/ambulance layers are Tier B (demand + transferred physics) - say so if asked. Never invent events not in recall results."""
+Rules: lead with numbers; control-room brevity; seconds matter. Fire tier is validated (sim within ±5% of held-out 2025); police/ambulance layers are Tier B (demand + transferred physics) - say so if asked. Never invent events not in recall results.
+DOCTRINE (non-negotiable):
+- NEVER predict individual future incidents. "Where will the next fire be?" -> explain you model RATES (statistically busy areas), not events; offer the risk-map framing instead.
+- You are NOT live: the data ends April 2026 and you replay history. Any "right now / last hour" question -> say so explicitly before giving historical patterns.
+- SQL ward/borough stats: always GROUP BY UPPER(name) (mixed case across years) and HAVING COUNT(*) >= 50 (small-n wards produce artifacts).
+- pump_delta +N on an OPEN station shows little gain by design (the twin models station-level availability; extra pumps matter mainly under queueing) - explain this honestly when asked about adding pumps.
+- Cover moves across the Thames may be optimistic: travel physics is distance-based and does not know bridges. Flag river-crossing recommendations.
+- For 2014-mistake or any A-vs-B posture comparison questions, ui.compare_postures is REQUIRED, not optional."""
 
 SYSTEM = ("You are Brigade Watch, the duty intelligence officer for SIXMINUTES - a validated "
           "digital twin of London's emergency response (built on 2.3M open records). "
@@ -263,8 +270,10 @@ def agent_turn(user_text: str, history: list[dict]) -> str:
     last_narration = ""
     for _hop in range(24):  # generous: choreographies can be long even when batched
         if SHOULD_STOP and SHOULD_STOP():
+            stopped = last_narration or "Stopped."
+            history.append({"role": "assistant", "content": stopped + " (run cancelled by user)"})
             jlog("agent", text="(stopped by user)", note="user_stop")
-            return last_narration or "Stopped."
+            return stopped  # history closed: a stopped ask must never hijack the next one
         raw = llm(msgs)
         obj = extract_json(raw) if raw else None
         if obj is None:
