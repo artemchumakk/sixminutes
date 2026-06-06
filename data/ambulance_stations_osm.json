@@ -1,0 +1,2450 @@
+{
+  "version": 0.6,
+  "generator": "Overpass API 0.7.62.11 87bfad18",
+  "osm3s": {
+    "timestamp_osm_base": "2026-06-06T21:02:01Z",
+    "copyright": "The data included in this document is from www.openstreetmap.org. The data is made available under ODbL."
+  },
+  "elements": [
+
+{
+  "type": "node",
+  "id": 333245246,
+  "lat": 51.6009733,
+  "lon": -0.0151696,
+  "tags": {
+    "emergency": "ambulance_station",
+    "name": "Walthamstow Ambulance Station"
+  }
+},
+{
+  "type": "node",
+  "id": 541172871,
+  "lat": 51.5774806,
+  "lon": -0.3684762,
+  "tags": {
+    "emergency": "ambulance_station",
+    "name": "Pinner Ambulance Station",
+    "operator": "London Ambulance Service (NHS)"
+  }
+},
+{
+  "type": "node",
+  "id": 747006844,
+  "lat": 51.5751451,
+  "lon": 0.1899321,
+  "tags": {
+    "emergency": "ambulance_station",
+    "name": "St John Ambulance Romford HQ",
+    "operator": "St John Ambulance",
+    "source": "os_street_view"
+  }
+},
+{
+  "type": "node",
+  "id": 1069512652,
+  "lat": 51.6459862,
+  "lon": -0.1908713,
+  "tags": {
+    "emergency": "ambulance_station",
+    "name": "St. John's Ambulance"
+  }
+},
+{
+  "type": "node",
+  "id": 5208148368,
+  "lat": 51.3626312,
+  "lon": -0.1748601,
+  "tags": {
+    "emergency": "ambulance_station",
+    "name": "St John's Ambulance"
+  }
+},
+{
+  "type": "node",
+  "id": 6408773692,
+  "lat": 51.4686871,
+  "lon": -0.3316376,
+  "tags": {
+    "emergency": "ambulance_station",
+    "name": "LAS HART Base East",
+    "operator": "London Ambulance Service",
+    "operator:wikidata": "Q1794466"
+  }
+},
+{
+  "type": "node",
+  "id": 6408773693,
+  "lat": 51.5208779,
+  "lon": -0.0005855,
+  "tags": {
+    "emergency": "ambulance_station",
+    "name": "LAS HART Base West",
+    "operator": "London Ambulance Service",
+    "operator:wikidata": "Q1794466"
+  }
+},
+{
+  "type": "node",
+  "id": 6871518296,
+  "lat": 51.5179945,
+  "lon": -0.1748818,
+  "tags": {
+    "check_date": "2024-08-23",
+    "emergency": "ambulance_station",
+    "name": "A&E department"
+  }
+},
+{
+  "type": "node",
+  "id": 10964428024,
+  "lat": 51.6180342,
+  "lon": -0.2756274,
+  "tags": {
+    "emergency": "ambulance_station",
+    "operator": "Hatzola Edgware",
+    "operator:wikidata": "Q16250839"
+  }
+},
+{
+  "type": "node",
+  "id": 12466795691,
+  "lat": 51.6471353,
+  "lon": -0.1858949,
+  "tags": {
+    "addr:city": "Barnet",
+    "addr:housenumber": "144",
+    "addr:postcode": "EN5 1SS",
+    "addr:street": "Station Road",
+    "emergency": "ambulance_station",
+    "name": "Barnet Ambulance Station",
+    "operator": "London Ambulance Service",
+    "operator:wikidata": "Q1794466"
+  }
+},
+{
+  "type": "node",
+  "id": 12466795692,
+  "lat": 51.5549867,
+  "lon": -0.2492206,
+  "tags": {
+    "addr:city": "London",
+    "addr:postcode": "NW10 1RZ",
+    "addr:street": "Neasden Lane",
+    "emergency": "ambulance_station",
+    "name": "Brent Ambulance Station",
+    "operator": "London Ambulance Service",
+    "operator:wikidata": "Q1794466"
+  }
+},
+{
+  "type": "way",
+  "id": 4992847,
+  "center": {
+    "lat": 51.4844890,
+    "lon": -0.1936971
+  },
+  "nodes": [
+    3363746160,
+    771818065,
+    3363746164,
+    33140878,
+    33140879,
+    8684194409,
+    7678653522,
+    721105262,
+    3363746160
+  ],
+  "tags": {
+    "access": "no",
+    "addr:city": "London",
+    "addr:housenumber": "150",
+    "addr:postcode": "SW6 1RX",
+    "addr:street": "Seagrave Road",
+    "check_date": "2026-02-22",
+    "emergency": "ambulance_station",
+    "name": "Fulham Ambulance Station",
+    "operator": "London Ambulance Service",
+    "operator:wikidata": "Q1794466"
+  }
+},
+{
+  "type": "way",
+  "id": 20807608,
+  "center": {
+    "lat": 51.4609033,
+    "lon": -0.4139926
+  },
+  "nodes": [
+    223484976,
+    223484979,
+    223484983,
+    223484987,
+    223484976
+  ],
+  "tags": {
+    "building": "yes",
+    "emergency": "ambulance_station",
+    "name": "London Ambulance Service Feltham"
+  }
+},
+{
+  "type": "way",
+  "id": 25601323,
+  "center": {
+    "lat": 51.3867365,
+    "lon": -0.1840311
+  },
+  "nodes": [
+    279061280,
+    1692447437,
+    1692447506,
+    1692447323,
+    1692447331,
+    279061281,
+    1692447516,
+    1692447559,
+    279061282,
+    279061283,
+    1692447565,
+    1692447663,
+    279061280
+  ],
+  "tags": {
+    "building": "yes",
+    "emergency": "ambulance_station"
+  }
+},
+{
+  "type": "way",
+  "id": 28476969,
+  "center": {
+    "lat": 51.3891981,
+    "lon": 0.0370359
+  },
+  "nodes": [
+    312831061,
+    312831063,
+    312831064,
+    6833077762,
+    6833077761,
+    6833077760,
+    6833077759,
+    6833077758,
+    312831065,
+    312831061
+  ],
+  "tags": {
+    "addr:city": "Bromley",
+    "addr:postcode": "BR2 9PW",
+    "addr:street": "Crown Lane",
+    "building": "yes",
+    "emergency": "ambulance_station",
+    "name": "Bromley Ambulance Station",
+    "operator": "London Ambulance Service",
+    "operator:wikidata": "Q1794466"
+  }
+},
+{
+  "type": "way",
+  "id": 28807503,
+  "center": {
+    "lat": 51.5768490,
+    "lon": 0.0056311
+  },
+  "nodes": [
+    316725544,
+    3355816501,
+    3355816500,
+    5888490955,
+    3355816498,
+    3355816499,
+    3355816497,
+    3355816496,
+    316725546,
+    316725547,
+    316725544
+  ],
+  "tags": {
+    "addr:city": "London",
+    "addr:country": "GB",
+    "addr:postcode": "E11 1NU",
+    "addr:street": "James Lane",
+    "building": "yes",
+    "emergency": "ambulance_station",
+    "name": "Whipps Cross Ambulance Station",
+    "operator": "London Ambulance Service NHS Trust",
+    "ref:GB:uprn": "100022960061",
+    "source": "Bing;knowledge"
+  }
+},
+{
+  "type": "way",
+  "id": 28897620,
+  "center": {
+    "lat": 51.3322740,
+    "lon": -0.2620659
+  },
+  "nodes": [
+    317644075,
+    6338720781,
+    6338720782,
+    317644078,
+    11519977280,
+    11519977281,
+    317644075
+  ],
+  "tags": {
+    "building": "yes",
+    "building_1": "ambulance_station",
+    "emergency": "ambulance_station",
+    "name": "Epsom Ambulance Station",
+    "operator": "London Ambulance Service",
+    "operator:wikidata": "Q1794466",
+    "ref:GB:uprn": "200004007595"
+  }
+},
+{
+  "type": "way",
+  "id": 32955335,
+  "center": {
+    "lat": 51.4027497,
+    "lon": -0.2688997
+  },
+  "nodes": [
+    371161595,
+    7674813985,
+    7678633464,
+    7678633462,
+    371162044,
+    9048195022,
+    7678633452,
+    7678633457,
+    2086194551,
+    9048195034,
+    371162045,
+    2086194550,
+    7674755781,
+    2086194552,
+    7674755780,
+    7678633456,
+    7678633455,
+    7678633454,
+    7674755779,
+    9048195033,
+    371161599,
+    7678633469,
+    7674755778,
+    7678633458,
+    7674755777,
+    7678633459,
+    371161595
+  ],
+  "tags": {
+    "addr:city": "New Malden",
+    "addr:postcode": "KT3 3NP",
+    "addr:street": "Wellington Crescent",
+    "emergency": "ambulance_station",
+    "name": "New Malden Ambulance Station",
+    "operator": "London Ambulance Service",
+    "operator:wikidata": "Q1794466"
+  }
+},
+{
+  "type": "way",
+  "id": 39046032,
+  "center": {
+    "lat": 51.3521946,
+    "lon": -0.0242569
+  },
+  "nodes": [
+    465876515,
+    465864412,
+    11250810104,
+    11250810103,
+    9680147339,
+    631126978,
+    9680147338,
+    9680147337,
+    2714881775,
+    11250810105,
+    11250810108,
+    11250810107,
+    465876515
+  ],
+  "tags": {
+    "area": "yes",
+    "emergency": "ambulance_station",
+    "name": "New Addington Ambulance Station"
+  }
+},
+{
+  "type": "way",
+  "id": 51290677,
+  "center": {
+    "lat": 51.5225001,
+    "lon": -0.0169180
+  },
+  "nodes": [
+    654356053,
+    8022763898,
+    8022763888,
+    8022763889,
+    8022763890,
+    8022763891,
+    8022763892,
+    8022763893,
+    8022763894,
+    8022763895,
+    8022763886,
+    8022763896,
+    8022763897,
+    654356054,
+    1463156223,
+    654356055,
+    8223254458,
+    8223254461,
+    8223254475,
+    8223254463,
+    8223254464,
+    8223254465,
+    8223254466,
+    8223254467,
+    8223254460,
+    8223254468,
+    8223254469,
+    8223254470,
+    8223254471,
+    8223254474,
+    8223254462,
+    8223254459,
+    654356056,
+    654356057,
+    654356058,
+    1463156119,
+    654356059,
+    8223254442,
+    654356060,
+    654356053
+  ],
+  "tags": {
+    "building": "yes",
+    "building:colour": "grey",
+    "building:material": "metal",
+    "emergency": "ambulance_station",
+    "name": "St Andrews House",
+    "operator": "London Ambulance Service",
+    "operator:wikidata": "Q1794466"
+  }
+},
+{
+  "type": "way",
+  "id": 51290688,
+  "center": {
+    "lat": 51.5225486,
+    "lon": -0.0167744
+  },
+  "nodes": [
+    654356061,
+    8223254429,
+    8223254430,
+    8223254431,
+    8223254432,
+    8223254457,
+    8223254456,
+    654356062,
+    8223254445,
+    8223254444,
+    654356063,
+    5250453369,
+    654356065,
+    9502905012,
+    9502905013,
+    9502905014,
+    9502905015,
+    9502905016,
+    662085082,
+    9502926217,
+    9502926218,
+    8223254433,
+    662085098,
+    654356061
+  ],
+  "tags": {
+    "emergency": "ambulance_station",
+    "operator": "London Ambulance Service"
+  }
+},
+{
+  "type": "way",
+  "id": 59429555,
+  "center": {
+    "lat": 51.6657615,
+    "lon": -0.1062142
+  },
+  "nodes": [
+    736949733,
+    736949734,
+    736949735,
+    736949736,
+    736949733
+  ],
+  "tags": {
+    "addr:city": "Enfield",
+    "addr:postcode": "EN2 8JR",
+    "addr:street": "The Ridgeway",
+    "building": "yes",
+    "check_date": "2026-05-19",
+    "emergency": "ambulance_station",
+    "name": "Chase Farm (H1) Ambulance Station",
+    "operator": "London Ambulance Service NHS Trust",
+    "ref:GB:uprn": "207183891",
+    "source": "OS_OpenData_StreetView"
+  }
+},
+{
+  "type": "way",
+  "id": 69382572,
+  "center": {
+    "lat": 51.5538386,
+    "lon": -0.1608735
+  },
+  "nodes": [
+    831257604,
+    831257346,
+    831257449,
+    831257587,
+    8133050539,
+    8133050534,
+    8133050537,
+    831257304,
+    8133050532,
+    831257196,
+    831257353,
+    831257456,
+    831257400,
+    831257475,
+    831257604
+  ],
+  "tags": {
+    "building": "yes",
+    "emergency": "ambulance_station",
+    "name": "Camden Ambulance Station"
+  }
+},
+{
+  "type": "way",
+  "id": 81309649,
+  "center": {
+    "lat": 51.5812409,
+    "lon": -0.0928359
+  },
+  "nodes": [
+    947268604,
+    947268608,
+    947268625,
+    947268626,
+    947268604
+  ],
+  "tags": {
+    "addr:city": "London",
+    "addr:postcode": "N15 3TR",
+    "building": "yes",
+    "emergency": "ambulance_station",
+    "operator": "London Ambulance Service",
+    "operator:wikidata": "Q1794466",
+    "ref:GB:uprn": "100023151084",
+    "source": "OS",
+    "source:addr:postcode": "ONSUD;OS Open UPRN"
+  }
+},
+{
+  "type": "way",
+  "id": 81932989,
+  "center": {
+    "lat": 51.6194961,
+    "lon": -0.0810464
+  },
+  "nodes": [
+    954763945,
+    954763946,
+    954763947,
+    954763949,
+    954763953,
+    954763962,
+    954763945
+  ],
+  "tags": {
+    "addr:city": "London",
+    "addr:postcode": "N18 1NJ",
+    "addr:street": "Windmill Road",
+    "building": "yes",
+    "emergency": "ambulance_station",
+    "name": "Edmonton (H3) Ambulance Station",
+    "operator": "London Ambulance Service",
+    "operator:wikidata": "Q1794466",
+    "ref:GB:uprn": "207169995",
+    "source": "OS_OpenData_StreetView"
+  }
+},
+{
+  "type": "way",
+  "id": 82489308,
+  "center": {
+    "lat": 51.6149939,
+    "lon": -0.2435009
+  },
+  "nodes": [
+    960130897,
+    960130900,
+    960130912,
+    960130913,
+    960130897
+  ],
+  "tags": {
+    "building": "yes",
+    "emergency": "ambulance_station",
+    "source": "OS_OpenData_StreetView"
+  }
+},
+{
+  "type": "way",
+  "id": 84193065,
+  "center": {
+    "lat": 51.3744217,
+    "lon": -0.4090142
+  },
+  "nodes": [
+    979295010,
+    979295122,
+    979295051,
+    979295138,
+    979295074,
+    979295090,
+    979295094,
+    979294974,
+    979294960,
+    979294966,
+    979295049,
+    979295024,
+    979295076,
+    979295040,
+    979294984,
+    979295010
+  ],
+  "tags": {
+    "addr:city": "Walton-on-Thames",
+    "addr:postcode": "KT12 1RZ",
+    "addr:street": "Hersham Road",
+    "building": "yes",
+    "emergency": "ambulance_station",
+    "name": "Walton Ambulance Station",
+    "operator": "South East Coast Ambulance Service",
+    "operator:wikidata": "Q7567104"
+  }
+},
+{
+  "type": "way",
+  "id": 85484707,
+  "center": {
+    "lat": 51.4352887,
+    "lon": -0.3481993
+  },
+  "nodes": [
+    991248696,
+    9318482705,
+    9318482704,
+    991248748,
+    991248978,
+    991249017,
+    991248696
+  ],
+  "tags": {
+    "addr:postcode": "TW2 5NT",
+    "addr:street": "South Road",
+    "building": "yes",
+    "emergency": "ambulance_station",
+    "name": "Twickenham Ambulance Station",
+    "ref:GB:uprn": "100023401402"
+  }
+},
+{
+  "type": "way",
+  "id": 97638188,
+  "center": {
+    "lat": 51.5247272,
+    "lon": -0.4644712
+  },
+  "nodes": [
+    1130329586,
+    1130330041,
+    1130329793,
+    1130329890,
+    1130329586
+  ],
+  "tags": {
+    "building": "yes",
+    "emergency": "ambulance_station",
+    "name": "London Ambulance Service - Hillingdon Hospital",
+    "operator": "NHS"
+  }
+},
+{
+  "type": "way",
+  "id": 116374893,
+  "center": {
+    "lat": 51.5002085,
+    "lon": -0.1088205
+  },
+  "nodes": [
+    1311997633,
+    7678657842,
+    1311997662,
+    7678657846,
+    1311997669,
+    13033448576,
+    1311997644,
+    1311997621,
+    1311997705,
+    1311997658,
+    1311997704,
+    1311997635,
+    1311997702,
+    12966938201,
+    12966938202,
+    7678657835,
+    7678657836,
+    7678657837,
+    1311997690,
+    1311997683,
+    7678657844,
+    1311997624,
+    1311997678,
+    1311997618,
+    12966938203,
+    12966938204,
+    1311997632,
+    1311997641,
+    7678657843,
+    1311997685,
+    1311997646,
+    12966938205,
+    12966938206,
+    7678657845,
+    1311997680,
+    1311997639,
+    12966938207,
+    1311997633
+  ],
+  "tags": {
+    "addr:city": "London",
+    "addr:housenumber": "220",
+    "addr:street": "Waterloo Road",
+    "building": "yes",
+    "emergency": "ambulance_station",
+    "name": "Waterloo Ambulance Station",
+    "operator": "London Ambulance Service",
+    "operator:wikidata": "Q1794466",
+    "source": "bing"
+  }
+},
+{
+  "type": "way",
+  "id": 122303419,
+  "center": {
+    "lat": 51.5336372,
+    "lon": 0.1365664
+  },
+  "nodes": [
+    1367087955,
+    1367087943,
+    1367087961,
+    1367087959,
+    1367087944,
+    1367087946,
+    1367087963,
+    9650935926,
+    1367087956,
+    1367087955
+  ],
+  "tags": {
+    "addr:city": "Dagenham",
+    "addr:postcode": "RM9 6XP",
+    "building": "yes",
+    "emergency": "ambulance_station",
+    "name": "Becontree Ambulance Station",
+    "operator": "London Ambulance Service",
+    "operator:wikidata": "Q1794466",
+    "ref:GB:uprn": "100068858"
+  }
+},
+{
+  "type": "way",
+  "id": 123817252,
+  "center": {
+    "lat": 51.6665720,
+    "lon": -0.3905078
+  },
+  "nodes": [
+    1379480437,
+    1379480430,
+    1379480416,
+    1379480425,
+    1379480437
+  ],
+  "tags": {
+    "building": "garage",
+    "emergency": "ambulance_station",
+    "name": "Watford Ambulance Station",
+    "source": "Bing/Local Knowledge"
+  }
+},
+{
+  "type": "way",
+  "id": 132952588,
+  "center": {
+    "lat": 51.5219069,
+    "lon": 0.0003544
+  },
+  "nodes": [
+    1462976925,
+    1462977036,
+    1462976958,
+    1462976988,
+    1462976925
+  ],
+  "tags": {
+    "addr:city": "London",
+    "addr:housenumber": "1g",
+    "addr:postcode": "E16 4TG",
+    "addr:street": "North Crescent",
+    "building": "industrial",
+    "emergency": "ambulance_station",
+    "name": "Vehicle Logistics Centre",
+    "operator": "London Ambulance Service",
+    "operator:type": "public",
+    "operator:wikidata": "Q1794466",
+    "ref:GB:uprn": "10090758316;10095721263",
+    "source": "Bing"
+  }
+},
+{
+  "type": "way",
+  "id": 132954076,
+  "center": {
+    "lat": 51.5210196,
+    "lon": -0.0005320
+  },
+  "nodes": [
+    11640787529,
+    1462984974,
+    1462985021,
+    1462985041,
+    1462985035,
+    11640787529
+  ],
+  "tags": {
+    "addr:city": "London",
+    "addr:parentstreet": "South Crescent",
+    "addr:postcode": "E16 4TL",
+    "addr:street": "Datapoint Business Centre",
+    "addr:unit": "1-2",
+    "building": "commercial",
+    "building:levels": "2",
+    "emergency": "ambulance_station",
+    "name": "Cody Road Annexe",
+    "operator": "London Ambulance Service",
+    "operator:wikidata": "Q1794466",
+    "ref:GB:uprn": "46250074",
+    "roof:levels": "0",
+    "roof:shape": "gabled",
+    "source": "Bing"
+  }
+},
+{
+  "type": "way",
+  "id": 146457213,
+  "center": {
+    "lat": 51.4569472,
+    "lon": -0.2015801
+  },
+  "nodes": [
+    1597462595,
+    7678608576,
+    7672165642,
+    1597462632,
+    7672269601,
+    8888801446,
+    1597462551,
+    7678608578,
+    1597462605,
+    7672165641,
+    8830229605,
+    1597462595
+  ],
+  "tags": {
+    "addr:city": "London",
+    "addr:housenumber": "48",
+    "addr:postcode": "SW18 1RX",
+    "addr:street": "West Hill",
+    "emergency": "ambulance_station",
+    "name": "Putney Ambulance Station",
+    "operator": "London Ambulance Service",
+    "operator:wikidata": "Q1794466",
+    "source": "local_knowledge"
+  }
+},
+{
+  "type": "way",
+  "id": 147495179,
+  "center": {
+    "lat": 51.5178894,
+    "lon": -0.1013881
+  },
+  "nodes": [
+    1607078900,
+    1607078898,
+    1607078887,
+    1607078889,
+    1607078900
+  ],
+  "tags": {
+    "building": "yes",
+    "building:levels": "1",
+    "building:material": "brick",
+    "emergency": "ambulance_station",
+    "name": "Smithfield Ambulance Station",
+    "operator": "London Ambulance Service",
+    "operator:wikidata": "Q1794466",
+    "roof:colour": "darkgrey",
+    "source": "Bing;photographic_survey"
+  }
+},
+{
+  "type": "way",
+  "id": 160674464,
+  "center": {
+    "lat": 51.3013139,
+    "lon": -0.3296820
+  },
+  "nodes": [
+    1727101061,
+    3945906972,
+    1727101063,
+    3945906975,
+    1727101064,
+    3945906974,
+    1727101058,
+    3945906971,
+    1727101061
+  ],
+  "tags": {
+    "building": "yes",
+    "emergency": "ambulance_station",
+    "name": "Leatherhead Ambulance Depot",
+    "ref:GB:uprn": "100062604248"
+  }
+},
+{
+  "type": "way",
+  "id": 183331810,
+  "center": {
+    "lat": 51.4605138,
+    "lon": -0.1684752
+  },
+  "nodes": [
+    1937050596,
+    7678720599,
+    7678720600,
+    1937050622,
+    1937050592,
+    1937050587,
+    7678720598,
+    1937050554,
+    1937050596
+  ],
+  "tags": {
+    "addr:city": "London",
+    "addr:housenumber": "119",
+    "addr:postcode": "SW11 1HW",
+    "addr:street": "Battersea Rise",
+    "emergency": "ambulance_station",
+    "name": "Battersea Ambulance Station",
+    "operator": "London Ambulance Service",
+    "operator:wikidata": "Q1794466"
+  }
+},
+{
+  "type": "way",
+  "id": 187814939,
+  "center": {
+    "lat": 51.6086042,
+    "lon": -0.1540515
+  },
+  "nodes": [
+    1984565017,
+    1984565091,
+    1984565024,
+    9898179459,
+    1984565061,
+    1984565062,
+    1984565100,
+    1984565035,
+    1984565079,
+    1984564899,
+    1984565017
+  ],
+  "tags": {
+    "addr:city": "London",
+    "addr:housenumber": "272a",
+    "addr:postcode": "N11 3DD",
+    "addr:street": "Colney Hatch Lane",
+    "building": "yes",
+    "emergency": "ambulance_station",
+    "name": "Friern Barnet (D4) Ambulance Station",
+    "operator": "London Ambulance Service",
+    "operator:wikidata": "Q1794466",
+    "ref:GB:uprn": "200026411"
+  }
+},
+{
+  "type": "way",
+  "id": 198576257,
+  "center": {
+    "lat": 51.5831375,
+    "lon": -0.0148182
+  },
+  "nodes": [
+    2087002874,
+    2087002850,
+    2087002836,
+    2087002838,
+    2087002830,
+    2087002858,
+    2087002874
+  ],
+  "tags": {
+    "building": "yes",
+    "emergency": "ambulance_station",
+    "name": "St John Ambulance Walthamstow Headquarters",
+    "operator": "St John Ambulance",
+    "operator:wikidata": "Q7593637"
+  }
+},
+{
+  "type": "way",
+  "id": 199719756,
+  "center": {
+    "lat": 51.6589762,
+    "lon": -0.2670132
+  },
+  "nodes": [
+    2097043389,
+    2097043392,
+    9725673156,
+    9725673153,
+    2097043387,
+    2097043386,
+    2097043389
+  ],
+  "tags": {
+    "emergency": "ambulance_station"
+  }
+},
+{
+  "type": "way",
+  "id": 221046879,
+  "center": {
+    "lat": 51.5349354,
+    "lon": -0.3475326
+  },
+  "nodes": [
+    2301020117,
+    2301020088,
+    6521166316,
+    2301020153,
+    2301020044,
+    2301020117
+  ],
+  "tags": {
+    "building": "yes",
+    "emergency": "ambulance_station",
+    "name": "Greenford Ambulance Station"
+  }
+},
+{
+  "type": "way",
+  "id": 254761877,
+  "center": {
+    "lat": 51.5276518,
+    "lon": 0.0234603
+  },
+  "nodes": [
+    618575621,
+    10173472906,
+    10074551064,
+    10074551073,
+    10058240687,
+    2605824911,
+    10058240688,
+    10058240689,
+    10034565061,
+    10058240690,
+    10058240691,
+    2605824912,
+    10173472903,
+    10173472902,
+    10173472901,
+    10173472905,
+    2605824913,
+    618575622,
+    10173472900,
+    618575621
+  ],
+  "tags": {
+    "addr:city": "London",
+    "addr:housename": "West Ham Ambulance Station",
+    "addr:postcode": "E13 8AZ",
+    "addr:street": "Howard's Road",
+    "emergency": "ambulance_station",
+    "name": "West Ham Ambulance Station"
+  }
+},
+{
+  "type": "way",
+  "id": 281951184,
+  "center": {
+    "lat": 51.5289656,
+    "lon": -0.0783150
+  },
+  "nodes": [
+    1761217107,
+    2859147821,
+    256547743,
+    5300165736,
+    2859110707,
+    1761217104,
+    1761217096,
+    5300165735,
+    1761217109,
+    1761217107
+  ],
+  "tags": {
+    "emergency": "ambulance_station"
+  }
+},
+{
+  "type": "way",
+  "id": 291746006,
+  "center": {
+    "lat": 51.4410058,
+    "lon": -0.0549359
+  },
+  "nodes": [
+    2952349919,
+    2952349920,
+    2952349921,
+    2952349922,
+    2952349919
+  ],
+  "tags": {
+    "addr:city": "London",
+    "addr:postcode": "SE23 3EP",
+    "building": "yes",
+    "emergency": "ambulance_station",
+    "name": "Forest Hill Ambulance Station",
+    "operator": "London Ambulance Service",
+    "operator:wikidata": "Q1794466",
+    "ref:GB:uprn": "100023256780",
+    "source:addr:postcode": "ONSUD;OS Open UPRN"
+  }
+},
+{
+  "type": "way",
+  "id": 300944177,
+  "center": {
+    "lat": 51.4608000,
+    "lon": 0.1538140
+  },
+  "nodes": [
+    3050508282,
+    3050508283,
+    3050508284,
+    3050508285,
+    3050508286,
+    3050508287,
+    3050508288,
+    3050508289,
+    3050508282
+  ],
+  "tags": {
+    "addr:city": "Bexleyheath",
+    "addr:housenumber": "164",
+    "addr:postcode": "DA7 6BZ",
+    "addr:street": "Erith Road",
+    "building": "yes",
+    "emergency": "ambulance_station",
+    "name": "Barnehurst Ambulance Station",
+    "operator": "London Ambulance Service",
+    "operator:wikidata": "Q1794466"
+  }
+},
+{
+  "type": "way",
+  "id": 317203191,
+  "center": {
+    "lat": 51.5056910,
+    "lon": -0.3355331
+  },
+  "nodes": [
+    3234433322,
+    3234433313,
+    3234433328,
+    3234433317,
+    3234433322
+  ],
+  "tags": {
+    "addr:city": "London",
+    "addr:postcode": "W7 3SA",
+    "addr:street": "Boston Road",
+    "building": "public",
+    "emergency": "ambulance_station",
+    "name": "Hanwell Ambulance Station",
+    "ref:GB:uprn": "12001360"
+  }
+},
+{
+  "type": "way",
+  "id": 342289413,
+  "center": {
+    "lat": 51.5244215,
+    "lon": -0.1757094
+  },
+  "nodes": [
+    3493116211,
+    3493116215,
+    3493116213,
+    3493116219,
+    3493116224,
+    3493116227,
+    3493116229,
+    3493116235,
+    3493116230,
+    3493116228,
+    3493116222,
+    3493116217,
+    3493116218,
+    3493116203,
+    3493116194,
+    3493116197,
+    3493116202,
+    3493116204,
+    3493116211
+  ],
+  "tags": {
+    "addr:city": "London",
+    "addr:country": "GB",
+    "addr:housenumber": "8",
+    "addr:postcode": "NW8 8NL",
+    "addr:street": "Lyons Place",
+    "building": "yes",
+    "building:levels": "3",
+    "emergency": "ambulance_station",
+    "name": "St. John's Wood Ambulance Station",
+    "ref:GB:uprn": "10033537716"
+  }
+},
+{
+  "type": "way",
+  "id": 356099209,
+  "center": {
+    "lat": 51.5178913,
+    "lon": -0.1754257
+  },
+  "nodes": [
+    3615941443,
+    3615941427,
+    3615941437,
+    3615941426,
+    3615941428,
+    3615941439,
+    3615941440,
+    3615941445,
+    3615941443
+  ],
+  "tags": {
+    "access": "private",
+    "amenity": "parking",
+    "emergency": "ambulance_station",
+    "layer": "1",
+    "level": "1",
+    "note": "Emergency NHS Abulances only",
+    "parking": "surface"
+  }
+},
+{
+  "type": "way",
+  "id": 390071079,
+  "center": {
+    "lat": 51.5225201,
+    "lon": -0.0392191
+  },
+  "nodes": [
+    1932825639,
+    3932248585,
+    3932248586,
+    13148234350,
+    1932825639
+  ],
+  "tags": {
+    "addr:city": "London",
+    "addr:postcode": "E1 4PQ",
+    "addr:street": "Harford Street",
+    "building": "yes",
+    "building:levels": "1",
+    "check_date": "2024-03-05",
+    "emergency": "ambulance_station",
+    "name": "Poplar Ambulance Station",
+    "operator": "London Ambulance Service",
+    "operator:wikidata": "Q1794466",
+    "roof:colour": "grey",
+    "roof:shape": "flat"
+  }
+},
+{
+  "type": "way",
+  "id": 416184222,
+  "center": {
+    "lat": 51.4578341,
+    "lon": -0.1032069
+  },
+  "nodes": [
+    4170164874,
+    12014746997,
+    4170164875,
+    4170164876,
+    4170164877,
+    4170164874
+  ],
+  "tags": {
+    "addr:city": "London",
+    "addr:housenumber": "250",
+    "addr:postcode": "SE24 0BJ",
+    "addr:street": "Milkwood Road",
+    "building": "yes",
+    "check_date": "2025-12-21",
+    "emergency": "ambulance_station",
+    "name": "Brixton Ambulance Station"
+  }
+},
+{
+  "type": "way",
+  "id": 425990395,
+  "center": {
+    "lat": 51.4887832,
+    "lon": -0.0541124
+  },
+  "nodes": [
+    4253153755,
+    4253153753,
+    4253153758,
+    4253153763,
+    4253153755
+  ],
+  "tags": {
+    "building": "yes",
+    "emergency": "ambulance_station",
+    "name": "Bermondsey Ambulance Station",
+    "operator": "London Ambulance Service",
+    "operator:wikidata": "Q1794466"
+  }
+},
+{
+  "type": "way",
+  "id": 427523101,
+  "center": {
+    "lat": 51.4172796,
+    "lon": 0.1154960
+  },
+  "nodes": [
+    4267255865,
+    4267255866,
+    4270377134,
+    4273522111,
+    4270377132,
+    4270377133,
+    4267255865
+  ],
+  "tags": {
+    "addr:city": "Sidcup",
+    "addr:postcode": "DA14 5DD",
+    "addr:street": "Suffolk Road",
+    "building": "yes",
+    "emergency": "ambulance_station",
+    "name": "St John's Amulance",
+    "ref:GB:uprn": "10011863293"
+  }
+},
+{
+  "type": "way",
+  "id": 464800239,
+  "center": {
+    "lat": 51.4159803,
+    "lon": -0.2168932
+  },
+  "nodes": [
+    4598728151,
+    4598728148,
+    4598728149,
+    7678623806,
+    4598728142,
+    7678623813,
+    4598728150,
+    7678623811,
+    4598728141,
+    7678623810,
+    4598728151
+  ],
+  "tags": {
+    "emergency": "ambulance_station",
+    "name": "Wimbledon Ambulance Station",
+    "operator": "London Ambulance Service",
+    "operator:wikidata": "Q1794466"
+  }
+},
+{
+  "type": "way",
+  "id": 539489219,
+  "center": {
+    "lat": 51.4526587,
+    "lon": 0.0341490
+  },
+  "nodes": [
+    5220304514,
+    5220304515,
+    5220304516,
+    9194437527,
+    9194228787,
+    5220304517,
+    9193878250,
+    5220304518,
+    5220304514
+  ],
+  "tags": {
+    "addr:city": "London",
+    "addr:housenumber": "205",
+    "addr:postcode": "SE9 5LN",
+    "addr:street": "Eltham Road",
+    "building": "yes",
+    "emergency": "ambulance_station",
+    "name": "Mottingham Ambulance Station",
+    "operator": "London Ambulance Service NHS",
+    "ref:GB:uprn": "10010215581"
+  }
+},
+{
+  "type": "way",
+  "id": 548756462,
+  "center": {
+    "lat": 51.4359254,
+    "lon": -0.1199619
+  },
+  "nodes": [
+    5301200410,
+    5301200411,
+    5301200412,
+    13420390092,
+    5301200413,
+    5301200410
+  ],
+  "tags": {
+    "addr:city": "London",
+    "addr:postcode": "SW16 2NN",
+    "building": "yes",
+    "emergency": "ambulance_station",
+    "name": "Streatham Ambulance Station",
+    "operator": "London Ambulance Service",
+    "operator:wikidata": "Q1794466",
+    "ref:GB:uprn": "100023318830",
+    "source:addr:postcode": "ONSUD;OS Open UPRN"
+  }
+},
+{
+  "type": "way",
+  "id": 552213649,
+  "center": {
+    "lat": 51.6613642,
+    "lon": -0.0626125
+  },
+  "nodes": [
+    153130740,
+    5331912744,
+    5331912741,
+    5331912739,
+    5331912753,
+    5331912757,
+    5331912755,
+    5331912760,
+    153130740
+  ],
+  "tags": {
+    "addr:city": "Enfield",
+    "addr:postcode": "EN1 4LA",
+    "addr:street": "Carterhatch Lane",
+    "area": "yes",
+    "emergency": "ambulance_station",
+    "name": "Ponders End (H4) Ambulance Station",
+    "operator": "London Ambulance Service NHS Trust"
+  }
+},
+{
+  "type": "way",
+  "id": 575511958,
+  "center": {
+    "lat": 51.4594837,
+    "lon": -0.0041436
+  },
+  "nodes": [
+    3172998087,
+    5522220551,
+    5522252175,
+    5522220552,
+    6833819782,
+    6833819783,
+    6833819781,
+    5522220556,
+    5522220557,
+    3172998087
+  ],
+  "tags": {
+    "addr:city": "London",
+    "addr:housenumber": "142",
+    "addr:postcode": "SE13 5PR",
+    "addr:street": "Lee High Road",
+    "building": "yes",
+    "emergency": "ambulance_station",
+    "name": "Lee Ambulance Station",
+    "operator": "London Ambulance Service NHS"
+  }
+},
+{
+  "type": "way",
+  "id": 590134935,
+  "center": {
+    "lat": 51.4771004,
+    "lon": 0.3176286
+  },
+  "nodes": [
+    5634799058,
+    5634799059,
+    5634799060,
+    5634799061,
+    5634799062,
+    5634799063,
+    5634799064,
+    5634799065,
+    5634799058
+  ],
+  "tags": {
+    "addr:city": "Grays",
+    "addr:postcode": "RM17 5YB",
+    "addr:street": "London Road",
+    "building": "yes",
+    "emergency": "ambulance_station",
+    "name": "St John Ambulance",
+    "operator": "St John Ambulance",
+    "operator:wikidata": "Q7593637",
+    "phone": "+44 844 770 4800",
+    "ref:GB:uprn": "200001555165",
+    "website": "https://www.sja.org.uk/"
+  }
+},
+{
+  "type": "way",
+  "id": 616191084,
+  "center": {
+    "lat": 51.4787958,
+    "lon": -0.0530259
+  },
+  "nodes": [
+    5301267104,
+    5826025770,
+    5826025783,
+    5826025771,
+    5301267093,
+    5826025785,
+    669074356,
+    5826025766,
+    5826025767,
+    5826025768,
+    5826025758,
+    5826025755,
+    5826025765,
+    5826025764,
+    5826025761,
+    669074355,
+    5826025760,
+    5301267106,
+    669074376,
+    5826025779,
+    5301267104
+  ],
+  "tags": {
+    "addr:city": "London",
+    "addr:country": "GB",
+    "addr:housenumber": "1",
+    "addr:postcode": "SE14 5DS",
+    "addr:street": "New Cross Road",
+    "emergency": "ambulance_station",
+    "name": "Deptford Ambulance Station",
+    "operator": "London Ambulance Service",
+    "operator:wikidata": "Q1794466"
+  }
+},
+{
+  "type": "way",
+  "id": 648298309,
+  "center": {
+    "lat": 51.4613252,
+    "lon": -0.2937848
+  },
+  "nodes": [
+    6086723175,
+    6086723176,
+    6086723177,
+    6086723178,
+    6086723175
+  ],
+  "tags": {
+    "addr:city": "Richmond",
+    "addr:housenumber": "73",
+    "addr:postcode": "TW10 6EG",
+    "addr:street": "Kings Road",
+    "building": "industrial",
+    "emergency": "ambulance_station",
+    "name": "Richmond Ambulance Station",
+    "operator": "London Ambulance Service",
+    "operator:wikidata": "Q1794466",
+    "ref:GB:uprn": "100023393700"
+  }
+},
+{
+  "type": "way",
+  "id": 688846575,
+  "center": {
+    "lat": 51.5499323,
+    "lon": -0.3038300
+  },
+  "nodes": [
+    6461183988,
+    6461183989,
+    6461183992,
+    6461183990,
+    6461183991,
+    6461183988
+  ],
+  "tags": {
+    "building": "yes",
+    "emergency": "ambulance_station",
+    "name": "Wembley Ambulance Station",
+    "operator": "London Ambulance Service",
+    "operator:wikidata": "Q1794466"
+  }
+},
+{
+  "type": "way",
+  "id": 694489411,
+  "center": {
+    "lat": 51.5172361,
+    "lon": -0.4192801
+  },
+  "nodes": [
+    6521091872,
+    6521091873,
+    6521091874,
+    6521091882,
+    6521091875,
+    6521091876,
+    6521091872
+  ],
+  "tags": {
+    "building": "yes",
+    "emergency": "ambulance_station",
+    "name": "Hayes Ambulance Station",
+    "operator": "London Ambulance Station"
+  }
+},
+{
+  "type": "way",
+  "id": 729363733,
+  "center": {
+    "lat": 51.4082171,
+    "lon": -0.0344313
+  },
+  "nodes": [
+    6833053840,
+    6833053841,
+    6833053842,
+    6833053843,
+    6833053844,
+    6833053845,
+    6833053846,
+    6833053847,
+    6833053840
+  ],
+  "tags": {
+    "addr:city": "Beckenham",
+    "addr:housenumber": "12",
+    "addr:postcode": "BR3 4LR",
+    "addr:street": "Beckenham Road",
+    "building": "yes",
+    "check_date": "2024-07-12",
+    "emergency": "ambulance_station",
+    "name": "Beckenham Ambulance Station",
+    "operator": "London Ambulance Service",
+    "operator:wikidata": "Q1794466"
+  }
+},
+{
+  "type": "way",
+  "id": 729366409,
+  "center": {
+    "lat": 51.3158937,
+    "lon": -0.1318132
+  },
+  "nodes": [
+    6833077763,
+    6833077764,
+    6519014974,
+    6833077766,
+    6833077763
+  ],
+  "tags": {
+    "addr:city": "Coulsdon",
+    "addr:housenumber": "21",
+    "addr:postcode": "CR5 2HR",
+    "addr:street": "Ullswater Crescent",
+    "building": "yes",
+    "emergency": "ambulance_station",
+    "name": "Coulsdon Ambulance Station"
+  }
+},
+{
+  "type": "way",
+  "id": 732115232,
+  "center": {
+    "lat": 51.4913695,
+    "lon": -0.1313764
+  },
+  "nodes": [
+    6855377537,
+    6855377538,
+    10983098090,
+    6855377539,
+    6855377537
+  ],
+  "tags": {
+    "building": "no",
+    "emergency": "ambulance_station",
+    "name": "Westminster Ambulance Station"
+  }
+},
+{
+  "type": "way",
+  "id": 799157150,
+  "center": {
+    "lat": 51.3844173,
+    "lon": -0.4930710
+  },
+  "nodes": [
+    7473948905,
+    7473948904,
+    7473948903,
+    7473948902,
+    7473948905
+  ],
+  "tags": {
+    "building": "yes",
+    "emergency": "ambulance_station",
+    "name": "St John Ambulance",
+    "operator": "St John Ambulance",
+    "operator:wikidata": "Q7593637"
+  }
+},
+{
+  "type": "way",
+  "id": 802681021,
+  "center": {
+    "lat": 51.5248483,
+    "lon": -0.1266719
+  },
+  "nodes": [
+    7508444536,
+    7508427982,
+    7508427983,
+    7508427984,
+    7508444488,
+    7508444485,
+    7508566585,
+    7508444536
+  ],
+  "tags": {
+    "addr:city": "London",
+    "addr:housenumber": "19",
+    "addr:postcode": "WC1N 1HP",
+    "addr:street": "Herbrand Street",
+    "building": "yes",
+    "emergency": "ambulance_station",
+    "name": "Bloomsbury Ambulance Station",
+    "operator": "London Ambulance Service",
+    "operator:wikidata": "Q1794466",
+    "source": "OS"
+  }
+},
+{
+  "type": "way",
+  "id": 821973608,
+  "center": {
+    "lat": 51.3810832,
+    "lon": -0.2811021
+  },
+  "nodes": [
+    7674755773,
+    7674755774,
+    7674755775,
+    7674755776,
+    7674755773
+  ],
+  "tags": {
+    "addr:city": "Surbiton",
+    "addr:country": "GB",
+    "addr:postcode": "KT6 7EL",
+    "building": "yes",
+    "emergency": "ambulance_station",
+    "name": "Tolworth Ambulance Station",
+    "operator": "London Ambulance Service",
+    "operator:wikidata": "Q1794466",
+    "ref:GB:uprn": "100023066818"
+  }
+},
+{
+  "type": "way",
+  "id": 821973612,
+  "center": {
+    "lat": 51.3781435,
+    "lon": -0.0599631
+  },
+  "nodes": [
+    7674813998,
+    7674814019,
+    7674813999,
+    7674814020,
+    7674814000,
+    7674814001,
+    7674814002,
+    7674814003,
+    7674814004,
+    7674814005,
+    7674814006,
+    7674814007,
+    7674814008,
+    7674814009,
+    7674814028,
+    7674814010,
+    7674814011,
+    7674814012,
+    7674814013,
+    7674814017,
+    7674813998
+  ],
+  "tags": {
+    "addr:city": "Croydon",
+    "addr:country": "GB",
+    "addr:housenumber": "168",
+    "addr:postcode": "CR0 8YY",
+    "addr:street": "Primrose Lane",
+    "addr:suburb": "Addiscombe",
+    "emergency": "ambulance_station",
+    "name": "Croydon Ambulance Station",
+    "operator": "London Ambulance Service",
+    "operator:wikidata": "Q1794466"
+  }
+},
+{
+  "type": "way",
+  "id": 822370129,
+  "center": {
+    "lat": 51.4569362,
+    "lon": -0.2015692
+  },
+  "nodes": [
+    7672269601,
+    7678608573,
+    1597462605,
+    7678608577,
+    7678608574,
+    7678608575,
+    7678608579,
+    7678608576,
+    7672165642,
+    1597462632,
+    7672269601
+  ],
+  "tags": {
+    "addr:city": "London",
+    "addr:postcode": "SW18 1RX",
+    "addr:street": "West Hill",
+    "building": "yes",
+    "emergency": "ambulance_station",
+    "name": "Putney Ambulance Station (Q4)",
+    "operator": "London Ambulance Service",
+    "operator:wikidata": "Q1794466",
+    "ref:GB:uprn": "121007581"
+  }
+},
+{
+  "type": "way",
+  "id": 822373751,
+  "center": {
+    "lat": 51.4844190,
+    "lon": -0.1940445
+  },
+  "nodes": [
+    7678653502,
+    7678653531,
+    7678653524,
+    7678653530,
+    7678653503,
+    7678653526,
+    7678653504,
+    7678653505,
+    7678653506,
+    7678653507,
+    7678653508,
+    7678653509,
+    7678653510,
+    7678653511,
+    7678653502
+  ],
+  "tags": {
+    "addr:city": "London",
+    "addr:postcode": "SW6 1RX",
+    "addr:street": "Seagrave Road",
+    "building": "yes",
+    "building:levels": "2",
+    "emergency": "ambulance_station",
+    "ref:GB:uprn": "34073159"
+  }
+},
+{
+  "type": "way",
+  "id": 822526107,
+  "center": {
+    "lat": 51.4451141,
+    "lon": -0.3969159
+  },
+  "nodes": [
+    7680149697,
+    7680149698,
+    7680149699,
+    9570300456,
+    7680149700,
+    7680149696,
+    7680149702,
+    7680149703,
+    7680149704,
+    7680149697
+  ],
+  "tags": {
+    "building": "yes",
+    "cadet": "ambulance",
+    "emergency": "ambulance_station",
+    "name": "St John's Ambulance",
+    "operator": "St John's Ambulance",
+    "phone": "+44 20 8948 8852",
+    "website": "https://www.sja.org.uk/"
+  }
+},
+{
+  "type": "way",
+  "id": 823425484,
+  "center": {
+    "lat": 51.5476461,
+    "lon": -0.0453083
+  },
+  "nodes": [
+    7965245110,
+    7687623187,
+    7687623188,
+    11952536491,
+    7687623206,
+    2972366779,
+    7687623219,
+    7687623222,
+    7687623223,
+    7687623226,
+    7687623227,
+    7965245158,
+    7687623209,
+    7687623229,
+    7687623193,
+    7965245167,
+    7965245166,
+    7687623192,
+    7687623189,
+    7687623201,
+    7687623203,
+    7687623204,
+    7687623190,
+    7687623191,
+    7965245124,
+    7687623186,
+    7965245108,
+    7965245109,
+    7965245110
+  ],
+  "tags": {
+    "building": "yes",
+    "building:colour": "white",
+    "building:levels": "2",
+    "emergency": "ambulance_station",
+    "name": "Homerton Ambulance Station",
+    "operator": "London Ambulance Service",
+    "operator:wikidata": "Q1794466"
+  }
+},
+{
+  "type": "way",
+  "id": 891302809,
+  "center": {
+    "lat": 51.6242547,
+    "lon": 0.3066452
+  },
+  "nodes": [
+    8284251738,
+    8284251739,
+    8284251740,
+    8284251741,
+    8284251742,
+    8284251743,
+    8284251738
+  ],
+  "tags": {
+    "building": "civic",
+    "emergency": "ambulance_station",
+    "name": "Brentwood Ambulance Station",
+    "operator": "NHS East of England Ambulance Service"
+  }
+},
+{
+  "type": "way",
+  "id": 947053289,
+  "center": {
+    "lat": 51.4337875,
+    "lon": 0.2359289
+  },
+  "nodes": [
+    8766464483,
+    8766464482,
+    8766464481,
+    8766464480,
+    8766464483
+  ],
+  "tags": {
+    "addr:city": "Dartford",
+    "addr:housenumber": "2-3",
+    "addr:parentstreet": "Green Street Green Road",
+    "addr:street": "Orbital One",
+    "building": "yes",
+    "building:colour": "#7bb57e",
+    "building:material": "metal",
+    "emergency": "ambulance_station",
+    "name": "Dartford Ambulance Station",
+    "operator": "South East Coast Ambulance Service NHS Foundation Trust",
+    "roof:colour": "#eae8e8"
+  }
+},
+{
+  "type": "way",
+  "id": 961887655,
+  "center": {
+    "lat": 51.4963020,
+    "lon": -0.2445978
+  },
+  "nodes": [
+    8897696384,
+    8897696385,
+    8897696386,
+    8897696387,
+    8897696388,
+    8897696377,
+    8897696384
+  ],
+  "tags": {
+    "building": "yes",
+    "emergency": "ambulance_station",
+    "name": "Chiswick Ambulance Station"
+  }
+},
+{
+  "type": "way",
+  "id": 965734672,
+  "center": {
+    "lat": 51.6023803,
+    "lon": -0.1212547
+  },
+  "nodes": [
+    8933897913,
+    8934021924,
+    8934021919,
+    8934021925,
+    8933897913
+  ],
+  "tags": {
+    "addr:city": "London",
+    "addr:postcode": "N22 8DF",
+    "addr:street": "Bounds Green Road",
+    "building": "yes",
+    "emergency": "ambulance_station",
+    "name": "Bounds Green (H2) Ambulance Station",
+    "operator": "London Ambulance Service",
+    "operator:wikidata": "Q1794466"
+  }
+},
+{
+  "type": "way",
+  "id": 965734673,
+  "center": {
+    "lat": 51.6026935,
+    "lon": -0.1208759
+  },
+  "nodes": [
+    8934021917,
+    8934021926,
+    8934021927,
+    8934021928,
+    8934021929,
+    8934021923,
+    8934021930,
+    8934021931,
+    8934021932,
+    8934021933,
+    8934021917
+  ],
+  "tags": {
+    "addr:city": "London",
+    "addr:postcode": "N22 8DF",
+    "addr:street": "Bounds Green Road",
+    "building": "yes",
+    "emergency": "ambulance_station",
+    "name": "Bounds Green (H2) Ambulance Station",
+    "operator": "London Ambulance Service",
+    "operator:wikidata": "Q1794466"
+  }
+},
+{
+  "type": "way",
+  "id": 975647619,
+  "center": {
+    "lat": 51.4801487,
+    "lon": -0.4582010
+  },
+  "nodes": [
+    9028638806,
+    9028638807,
+    9028638808,
+    9028638809,
+    9028638806
+  ],
+  "tags": {
+    "addr:postcode": "TW6 2RR",
+    "addr:street": "Northern Perimeter Road",
+    "building": "yes",
+    "emergency": "ambulance_station",
+    "name": "Heathrow Ambulance Station",
+    "operator": "London Ambulance Service",
+    "operator:wikidata": "Q1794466"
+  }
+},
+{
+  "type": "way",
+  "id": 986283845,
+  "center": {
+    "lat": 51.4943406,
+    "lon": 0.0615434
+  },
+  "nodes": [
+    1489868815,
+    1489868814,
+    1489868816,
+    9117251581,
+    9117251580,
+    9117251579,
+    9117251577,
+    1947276683,
+    1947276694,
+    9117251586,
+    9117251576,
+    1489868813,
+    1489868818,
+    9117251565,
+    1558095992,
+    1489868815
+  ],
+  "tags": {
+    "emergency": "ambulance_station",
+    "name": "Woolwich Ambulance Station"
+  }
+},
+{
+  "type": "way",
+  "id": 1017934951,
+  "center": {
+    "lat": 51.4039644,
+    "lon": 0.1040405
+  },
+  "nodes": [
+    8967738546,
+    9389051510,
+    9389051509,
+    9389051508,
+    8967738546
+  ],
+  "tags": {
+    "addr:city": "Orpington",
+    "addr:postcode": "BR5 2PZ",
+    "addr:street": "Chipperfield Road",
+    "building": "yes",
+    "emergency": "ambulance_station",
+    "name": "St Pauls Cray Ambulance Station"
+  }
+},
+{
+  "type": "way",
+  "id": 1098956374,
+  "center": {
+    "lat": 51.4903575,
+    "lon": 0.3198095
+  },
+  "nodes": [
+    10062636606,
+    10062636607,
+    10062636608,
+    10062636609,
+    10062636610,
+    10062636611,
+    10062636606
+  ],
+  "tags": {
+    "addr:city": "Grays",
+    "addr:postcode": "RM17 5QS",
+    "addr:street": "Hogg Lane",
+    "building": "yes",
+    "emergency": "ambulance_station",
+    "name": "Thurrock Ambulance Station",
+    "operator": "East of England Ambulance Service",
+    "operator:wikidata": "Q5329757",
+    "ref:GB:uprn": "200001555140"
+  }
+},
+{
+  "type": "way",
+  "id": 1215876688,
+  "center": {
+    "lat": 51.4723523,
+    "lon": 0.0462908
+  },
+  "nodes": [
+    6833118933,
+    11265557927,
+    12083971014,
+    12083971015,
+    9984417783,
+    9984417784,
+    9984417785,
+    12083971004,
+    420516937,
+    9984417786,
+    9984417787,
+    6833118928,
+    6833118933
+  ],
+  "tags": {
+    "addr:city": "London",
+    "addr:housenumber": "392",
+    "addr:postcode": "SE18 4LP",
+    "addr:street": "Shooters Hill Road",
+    "emergency": "ambulance_station",
+    "landuse": "depot",
+    "name": "Greenwich Ambulance Station",
+    "operator": "London Ambulance Service",
+    "operator:wikidata": "Q1794466"
+  }
+},
+{
+  "type": "way",
+  "id": 1255365295,
+  "center": {
+    "lat": 51.4817002,
+    "lon": -0.4555136
+  },
+  "nodes": [
+    11669966697,
+    11669966698,
+    11669966699,
+    11669966700,
+    11669966701,
+    11669966702,
+    11669966697
+  ],
+  "tags": {
+    "addr:city": "West Drayton",
+    "addr:postcode": "UB7 0DP",
+    "building": "yes",
+    "emergency": "ambulance_station",
+    "name": "Heathrow Cycle Response Base",
+    "ref:GB:uprn": "100023420439",
+    "source:addr:postcode": "ONSUD;OS Open UPRN"
+  }
+},
+{
+  "type": "way",
+  "id": 1280832632,
+  "center": {
+    "lat": 51.5776831,
+    "lon": 0.1014192
+  },
+  "nodes": [
+    11888787002,
+    11888787001,
+    11888787000,
+    11888786999,
+    11888786998,
+    11888786997,
+    11888786996,
+    11888786995,
+    11888786994,
+    11888786993,
+    11888786992,
+    11888786991,
+    11888786990,
+    747142416,
+    11888787002
+  ],
+  "tags": {
+    "addr:postcode": "IG3 8HQ",
+    "building": "yes",
+    "emergency": "ambulance_station",
+    "ref:GB:uprn": "100023581980",
+    "source": "os_street_view",
+    "source:addr:postcode": "ONSUD;OS Open UPRN"
+  }
+},
+{
+  "type": "way",
+  "id": 1285641218,
+  "center": {
+    "lat": 51.5316173,
+    "lon": 0.0580024
+  },
+  "nodes": [
+    618264958,
+    11922131275,
+    11922131277,
+    11922131276,
+    11922131278,
+    11922131279,
+    10266245552,
+    10266245553,
+    11926015783,
+    11926015782,
+    618264954,
+    618264955,
+    10266245567,
+    11922119368,
+    11922131269,
+    11922131270,
+    11922131273,
+    11922131274,
+    11922131271,
+    11922131272,
+    618264958
+  ],
+  "tags": {
+    "addr:city": "London",
+    "addr:postcode": "E6 2RG",
+    "addr:street": "Wellington Road",
+    "addr:suburb": "East Ham",
+    "emergency": "ambulance_station",
+    "name": "Newham Ambulance Station",
+    "operator": "London Ambulance Service",
+    "operator:type": "government",
+    "operator:wikidata": "Q1794466",
+    "source:addr:postcode": "CodePoint Postcodes"
+  }
+},
+{
+  "type": "way",
+  "id": 1462628973,
+  "center": {
+    "lat": 51.3724867,
+    "lon": -0.4649997
+  },
+  "nodes": [
+    13416281264,
+    13416281265,
+    13416281266,
+    13416281267,
+    13416281268,
+    13416281269,
+    13416281270,
+    13416281271,
+    13416281272,
+    13416281273,
+    13416281264
+  ],
+  "tags": {
+    "addr:city": "Weybridge",
+    "addr:housename": "St. John Ambulance",
+    "addr:postcode": "KT13 8HN",
+    "addr:street": "Wey Road",
+    "building": "yes",
+    "emergency": "ambulance_station",
+    "operator": "St John Ambulance",
+    "operator:wikidata": "Q7593637"
+  }
+},
+{
+  "type": "relation",
+  "id": 9436138,
+  "center": {
+    "lat": 51.5199659,
+    "lon": -0.1612633
+  },
+  "members": [
+    {
+      "type": "way",
+      "ref": 679634709,
+      "role": "outer"
+    },
+    {
+      "type": "way",
+      "ref": 679634710,
+      "role": "outer"
+    }
+  ],
+  "tags": {
+    "addr:housenumber": "63",
+    "addr:street": "York Street",
+    "building": "yes",
+    "emergency": "ambulance_station",
+    "name": "St John Ambulance",
+    "operator": "St John Ambulance",
+    "operator:wikidata": "Q7593637",
+    "type": "multipolygon",
+    "website": "https://www.sja.org.uk/sja/default.aspx"
+  }
+}
+
+  ]
+}
