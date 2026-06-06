@@ -47,7 +47,7 @@ FastAPI, all-local, replay-safe:
 
 ### Block 3 — `agent.py` + voice (20:15–20:50) 🔴
 
-- Nemotron tool-calling agent (OpenAI-compatible client; env `SIXMINUTES_LLM_*` →
+- Nemotron tool-calling agent (OpenAI-compatible client; env `WARDEN_LLM_*` →
   Nebius `nvidia/nemotron-3-super-120b-a12b`, or Spark vLLM when reachable).
 - Tools: `run_scenario(posture)` (hits api.py) · `sql(query)` (DuckDB over parquet) ·
   `recall(question)` (memory search).

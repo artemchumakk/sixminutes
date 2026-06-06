@@ -5,7 +5,7 @@
 
 ## 0:00–0:25 — HOOK
 *Dark dashboard, map of London, station dots breathing.*
-> "London promises a fire engine in six minutes. This is SIXMINUTES — a validated digital
+> "London promises a fire engine in six minutes. This is WARDEN — a validated digital
 > twin of the city's emergency response, built this weekend from 2.3 million open records
 > on a DGX Spark. It answers the questions you can't A/B test on real emergencies."
 
@@ -59,7 +59,7 @@
 *Scenario brief output.*
 > "Every answer is a decision: which pump to move tonight, which closure survives a
 > budget round, which ward silently loses the promise at 2 AM. City Hall could have
-> known in 2014. Now it can. SIXMINUTES — fire today; the same engine already maps
+> known in 2014. Now it can. WARDEN — fire today; the same engine already maps
 > police and ambulance. One twin, every blue light."
 
 ## Shot checklist
