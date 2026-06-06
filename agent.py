@@ -133,8 +133,14 @@ UI_VERBS = {"narrate", "reset", "close_stations", "open_2014", "run_scenario",
             "show_validation", "show_metric"}
 
 
-def tool_ui(action: str, **kwargs) -> dict:
-    """Ghost Operator: emit a choreography verb to the dashboard command bus."""
+def tool_ui(action: str = "", steps: list[dict] | None = None, **kwargs) -> dict:
+    """Ghost Operator: emit choreography verb(s) to the dashboard command bus.
+    Either a single action, or steps=[{action:..., ...}, ...] batched in one hop."""
+    if steps:
+        results = [tool_ui(**{k: v for k, v in s.items() if k != "action"}, action=s.get("action", ""))
+                   for s in steps]
+        bad = [r for r in results if "error" in r]
+        return {"ok": True, "executed": len(results) - len(bad), "errors": bad[:2]}
     if action not in UI_VERBS:
         return {"error": f"unknown ui action '{action}'; allowed: {sorted(UI_VERBS)}"}
     cmd = {"type": action, **kwargs}
@@ -168,6 +174,7 @@ TOOLS_DOC = """You can call tools by replying ONLY a JSON object (no prose aroun
      {"action":"show_validation"} | {"action":"show_metric","key":"pushed_past_6min"}
 To answer the user directly, reply: {"say":"<your answer>"}
 
+BATCHING: you can send a whole choreography in ONE call: {"tool":"ui","args":{"steps":[{"action":"narrate","text":"..."},{"action":"reset"},{"action":"close_stations","names":[...]},{"action":"run_scenario"}]}} - PREFER batches of 3-5 verbs over one-verb hops.
 CHOREOGRAPHY CONTRACT - when the user says "show me", "demonstrate", "what happens if", or asks anything visual, you MUST hit ALL six beats in order:
  1) ui.narrate a one-line plan
  2) ui.reset, then ui.close_stations and/or ui.open_2014 — REQUIRED: the wall runs ONLY what is on the board; ui.run_scenario with an empty board shows nothing
@@ -236,7 +243,8 @@ def agent_turn(user_text: str, history: list[dict]) -> str:
     jlog("user", text=user_text)
     msgs = [{"role": "system", "content": SYSTEM}] + history[-16:]
     bad = 0
-    for _hop in range(14):  # choreographies are many small ui hops
+    last_narration = ""
+    for _hop in range(24):  # generous: choreographies can be long even when batched
         raw = llm(msgs)
         obj = extract_json(raw) if raw else None
         if obj is None:
@@ -248,6 +256,12 @@ def agent_turn(user_text: str, history: list[dict]) -> str:
             obj = {"say": (raw or "I lost the thread - ask me again.").strip()[:400]}
         if "tool" in obj:
             name, args = obj["tool"], obj.get("args", {})
+            if name == "ui":
+                texts = [s.get("text", "") for s in args.get("steps", []) if s.get("action") == "narrate"]
+                if args.get("action") == "narrate":
+                    texts.append(args.get("text", ""))
+                if texts:
+                    last_narration = texts[-1]
             jlog("tool_call", tool=name, args=args)
             try:
                 fn = {"run_scenario": tool_run_scenario, "sql": tool_sql,
@@ -263,7 +277,11 @@ def agent_turn(user_text: str, history: list[dict]) -> str:
         history.append({"role": "assistant", "content": answer})
         jlog("agent", text=answer)
         return answer
-    return "Tool budget exhausted - try a simpler question."
+    # budget exhausted mid-choreography: the wall already played; close with the last narration
+    fallback = last_narration or "Choreography ran long - the board shows where I got to. Ask me to continue."
+    history.append({"role": "assistant", "content": fallback})
+    jlog("agent", text=fallback, note="hop_budget_exhausted")
+    return fallback
 
 
 # ---------------------------------------------------------------- voice -----
