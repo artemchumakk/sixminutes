@@ -110,6 +110,49 @@ export default function Chat({
   // ---- fire workspace: full-bleed twin; composer floats over the map ----
   // (composer component itself untouched, per migration plan)
   if (ws.id === "fire") {
+    // transcript renders INSIDE the bar (Composer header slot): one element, growing
+    const transcript =
+      fireMsgs.length > 0 ? (
+        <div className="relative">
+          <button
+            onClick={() => fireRef.current?.clearChat()}
+            className="absolute right-2 top-2 z-10 flex h-6 w-6 items-center justify-center rounded-md text-[13px] text-neutral-400 hover:bg-neutral-100 hover:text-neutral-600"
+            title="Clear conversation"
+          >
+            ✕
+          </button>
+          <div ref={fireScrollRef} className="max-h-[38vh] overflow-y-auto px-4 py-4">
+            <div className="flex flex-col gap-5">
+              {fireMsgs.map((m) =>
+                m.role === "user" ? (
+                  <div key={m.id} className="flex justify-end">
+                    <div className="max-w-[80%] rounded-3xl rounded-br-lg bg-neutral-100 px-4 py-2.5 text-[15px] leading-6 text-neutral-900">
+                      {m.text}
+                    </div>
+                  </div>
+                ) : (
+                  <div key={m.id} className="flex gap-3">
+                    <div
+                      className="mt-0.5 flex h-7 w-7 shrink-0 items-center justify-center rounded-full border border-neutral-200 text-[13px]"
+                      style={{ color: ws.accent }}
+                    >
+                      ✦
+                    </div>
+                    <div className="min-w-0 flex-1 pt-0.5 text-[15px] leading-7 text-neutral-800">
+                      {m.pending && m.text === "" ? (
+                        <span className="text-neutral-400">Thinking…</span>
+                      ) : (
+                        <span className={cx(m.pending && "caret")}>{m.text}</span>
+                      )}
+                    </div>
+                  </div>
+                )
+              )}
+            </div>
+          </div>
+        </div>
+      ) : undefined;
+
     const fireComposer = (
       <Composer
         value={input}
@@ -129,6 +172,7 @@ export default function Chat({
         activeFolder={activeFolder}
         onSelectFolder={setActiveFolder}
         onAddFolder={addFolder}
+        header={transcript}
       />
     );
     return (
@@ -146,50 +190,7 @@ export default function Chat({
             (fireAnalysing ? "right-[336px]" : "right-0")
           }
         >
-          <div className="pointer-events-auto mx-auto w-full max-w-3xl">
-            {/* the bar extends into a chat window once a conversation exists */}
-            {fireMsgs.length > 0 && (
-              <div className="relative mb-2 rounded-2xl border border-neutral-200 bg-white/95 shadow-[0_8px_30px_rgba(0,0,0,0.12)] backdrop-blur-sm">
-                <button
-                  onClick={() => fireRef.current?.clearChat()}
-                  className="absolute right-2 top-2 z-10 flex h-6 w-6 items-center justify-center rounded-md text-[13px] text-neutral-400 hover:bg-neutral-100 hover:text-neutral-600"
-                  title="Clear conversation"
-                >
-                  ✕
-                </button>
-                <div ref={fireScrollRef} className="max-h-[40vh] overflow-y-auto px-4 py-4">
-                  <div className="flex flex-col gap-5">
-                    {fireMsgs.map((m) =>
-                      m.role === "user" ? (
-                        <div key={m.id} className="flex justify-end">
-                          <div className="max-w-[80%] rounded-3xl rounded-br-lg bg-neutral-100 px-4 py-2.5 text-[15px] leading-6 text-neutral-900">
-                            {m.text}
-                          </div>
-                        </div>
-                      ) : (
-                        <div key={m.id} className="flex gap-3">
-                          <div
-                            className="mt-0.5 flex h-7 w-7 shrink-0 items-center justify-center rounded-full border border-neutral-200 text-[13px]"
-                            style={{ color: ws.accent }}
-                          >
-                            ✦
-                          </div>
-                          <div className="min-w-0 flex-1 pt-0.5 text-[15px] leading-7 text-neutral-800">
-                            {m.pending && m.text === "" ? (
-                              <span className="text-neutral-400">Thinking…</span>
-                            ) : (
-                              <span className={cx(m.pending && "caret")}>{m.text}</span>
-                            )}
-                          </div>
-                        </div>
-                      )
-                    )}
-                  </div>
-                </div>
-              </div>
-            )}
-            {fireComposer}
-          </div>
+          <div className="pointer-events-auto mx-auto w-full max-w-3xl">{fireComposer}</div>
         </div>
       </div>
     );

@@ -18,6 +18,7 @@ export default function Composer({
   activeFolder,
   onSelectFolder,
   onAddFolder,
+  header,
 }: {
   value: string;
   onChange: (v: string) => void;
@@ -31,6 +32,8 @@ export default function Composer({
   activeFolder: string;
   onSelectFolder: (f: string) => void;
   onAddFolder: () => void;
+  /** optional content rendered inside the bar, above the input (e.g. a transcript) */
+  header?: React.ReactNode;
 }) {
   const ref = useRef<HTMLTextAreaElement>(null);
   const [folderOpen, setFolderOpen] = useState(false);
@@ -61,6 +64,7 @@ export default function Composer({
   return (
     <div className="rounded-[26px] border border-neutral-200/80 bg-neutral-100/70 p-1.5">
       <div className="rounded-[20px] border border-neutral-200 bg-white shadow-[0_1px_2px_rgba(0,0,0,0.04)]">
+        {header && <div className="border-b border-neutral-100">{header}</div>}
         <textarea
           ref={ref}
           autoFocus={autoFocus}
