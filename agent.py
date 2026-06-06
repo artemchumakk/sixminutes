@@ -382,6 +382,8 @@ def patrol(speak: bool, accel: int = 60) -> None:
         ("AFA buildings", "FINDING: Non-residential false alarms cost GBP 5.0M/yr in pump time; 39 buildings trigger at least monthly; worst is an NW1 hospital with 61 false-alarm responses in 12 months (GBP 25,685)."),
         ("Suburbs", "FINDING: Counter-intuitive - 10+ storey towers get FASTER first pumps (mean 307s) than single houses (352s, p90 512s): density beats height; the 6-minute promise breaks in outer low-rise London, not the towers."),
         ("Cover moves", "FINDING: LFB made 7,288 real non-home-station deployments in the latest 12 months (3.5% of mobilisations) - the cover-move recommender formalizes this existing daily practice with simulation math."),
+        ("Ambulance transfer", "FINDING (ambulance tier): fire-learned travel physics applied to 73 LAS stations + real Ward-Atlas demand reproduces real C1 mean within -11.3% free-flow; adding a finite-fleet availability model (~240 ambulances, hospital handover queueing) lands at 428.8s vs real 429.8s - ONE SECOND off. The C1 tail is hospital handover delay, mechanistically shown."),
+        ("Police tier", "FINDING (police tier): spearman(call volume, closure damage) = +0.37 for MPS bases; spreadsheet's 10 closures vs model's 10 = 0/10 overlap with 1.6x the damage. Biggin Hill is the most damaging closure in BOTH fire (+215s) and police (+374s) - the same corner of London is the safety net's double single-point-of-failure."),
     ]:
         seed("analysis", loc, "info", narr)
     if speak:

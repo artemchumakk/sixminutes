@@ -394,6 +394,9 @@ def findings() -> list[dict]:
         {"id": "coverreal", "number": "7,288", "title": "Cover moves are daily LFB practice",
          "line": "3.5% of mobilisations already deploy from non-home stations — we rank those moves by math.",
          "ask": "How often does LFB actually move pumps between stations, and how does your cover recommender relate to that?"},
+        {"id": "handover", "number": "1s off", "title": "Hospital handover is the ambulance bottleneck",
+         "line": "Fire-learned physics + a finite-fleet queue lands at 428.8s vs the real 429.8s — the C1 tail IS handover delay.",
+         "ask": "Explain the ambulance transfer experiment and what hospital handover does to response times."},
     ]
 
 
