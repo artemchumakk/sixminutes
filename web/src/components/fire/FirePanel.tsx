@@ -155,7 +155,7 @@ export default function FirePanel({
 }) {
   const scale = result?.scale ?? SCALE_FALLBACK;
   return (
-    <aside className="flex w-[320px] shrink-0 flex-col overflow-y-auto border-l border-neutral-200 bg-white">
+    <aside className="flex h-full w-full flex-col overflow-y-auto rounded-2xl border border-neutral-200 bg-white/95 shadow-[0_8px_30px_rgba(0,0,0,0.12)] backdrop-blur-sm">
       <Section title="Replay window">
         <HourBandControl value={hours} onChange={onHours} />
         {baseline && (

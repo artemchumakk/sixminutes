@@ -180,27 +180,40 @@ export default function FireMap({ accent }: { accent: string }) {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
+  const analysing = closed.length > 0;
+
   return (
-    <div className="flex h-full w-full">
-      <div className="relative min-w-0 flex-1">
-        <div ref={divRef} className="h-full w-full" />
-        {running && (
-          <div className="pointer-events-none absolute left-1/2 top-3 z-[700] -translate-x-1/2 rounded-xl border border-neutral-200 bg-white/95 px-3.5 py-2 text-[13px] text-neutral-500 shadow-[0_8px_30px_rgba(0,0,0,0.08)]">
-            simulating a year of London…
-          </div>
-        )}
-      </div>
-      <FirePanel
-        accent={accent}
-        baseline={baseline}
-        hours={hours}
-        onHours={onHours}
-        closed={closed}
-        onReopen={toggleStation}
-        result={result}
-        running={running}
-        station={station}
-      />
+    <div className="absolute inset-0">
+      <div ref={divRef} className="h-full w-full" />
+
+      {/* quiet hint — the only chrome before an analysis begins */}
+      {!analysing && (
+        <div className="pointer-events-none absolute left-1/2 top-5 z-10 -translate-x-1/2 rounded-full border border-neutral-200 bg-white/90 px-4 py-1.5 text-[12.5px] text-neutral-500 shadow-[0_2px_12px_rgba(0,0,0,0.06)] backdrop-blur-sm">
+        click a fire station to start an analysis
+        </div>
+      )}
+      {running && (
+        <div className="pointer-events-none absolute left-1/2 top-5 z-10 -translate-x-1/2 rounded-full border border-neutral-200 bg-white/90 px-4 py-1.5 text-[12.5px] text-neutral-500 shadow-[0_2px_12px_rgba(0,0,0,0.06)] backdrop-blur-sm">
+          simulating a year of London…
+        </div>
+      )}
+
+      {/* analytics: appears only once an analysis is live */}
+      {analysing && (
+        <div className="absolute bottom-24 right-3 top-14 z-10 w-[320px]">
+          <FirePanel
+            accent={accent}
+            baseline={baseline}
+            hours={hours}
+            onHours={onHours}
+            closed={closed}
+            onReopen={toggleStation}
+            result={result}
+            running={running}
+            station={station}
+          />
+        </div>
+      )}
     </div>
   );
 }

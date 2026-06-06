@@ -35,8 +35,14 @@ export default function CodexApp({ ws, onExit }: { ws: Workspace; onExit: () => 
       />
 
       <div className="relative flex min-w-0 flex-1 flex-col">
-        {/* top bar */}
-        <header className="flex h-14 shrink-0 items-center justify-end px-4">
+        {/* top bar — floats over the map in the fire workspace so the canvas is full-bleed */}
+        <header
+          className={
+            ws.id === "fire" && view === "chat"
+              ? "absolute right-0 top-0 z-20 flex h-14 items-center justify-end px-4"
+              : "flex h-14 shrink-0 items-center justify-end px-4"
+          }
+        >
           <div className="relative">
             <button
               onClick={() => setMenuOpen((o) => !o)}

@@ -98,16 +98,14 @@ export default function Chat({
     );
   }
 
-  // ---- fire workspace: the validated twin lives where the thread would be ----
-  // (composer + sidebar + everything else: untouched, per migration plan)
+  // ---- fire workspace: full-bleed twin; composer floats over the map ----
+  // (composer component itself untouched, per migration plan)
   if (ws.id === "fire") {
     return (
-      <div className="flex h-full flex-col">
-        <div className="min-h-0 flex-1">
-          <FireMap accent={ws.accent} />
-        </div>
-        <div className="px-4 pb-4">
-          <div className="mx-auto w-full max-w-3xl">{composer}</div>
+      <div className="relative h-full w-full">
+        <FireMap accent={ws.accent} />
+        <div className="pointer-events-none absolute bottom-4 left-0 right-0 z-10 px-4">
+          <div className="pointer-events-auto mx-auto w-full max-w-3xl">{composer}</div>
         </div>
       </div>
     );
