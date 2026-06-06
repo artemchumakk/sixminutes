@@ -242,6 +242,15 @@ def patrol(speak: bool, accel: int = 60) -> None:
     days = inc["DateOfCall"].unique().sort().to_list()
     remember("session", "London", "info", f"Patrol started. Watching 2025 replay at {accel}x. "
              f"{inc.height:,} incidents across {len(days)} days queued.")
+    # seed today's validated findings so voice recall can answer questions about them
+    for loc, narr in [
+        ("Biggin Hill", "FINDING: Biggin Hill is London's quietest station (385 calls/yr) yet closing it adds +215s locally and pushes 9.1% of its calls past the 6-minute target; call volume correlates NEGATIVELY (-0.18) with closure damage."),
+        ("Whitechapel", "FINDING: Whitechapel, 7x busier than Biggin Hill, is among the SAFEST closures (+51s local) due to overlapping central cover - the spreadsheet method ranks closures backwards."),
+        ("2014 closures", "FINDING: The 2014 LSP5 closures (Clerkenwell, Westminster, Southwark, Belsize, Kingsland, Knightsbridge, Downham, Woolwich, Bow, Silvertown) measurably cost +63s in their former grounds; the twin, never shown pre-2021 data, predicts -52s recovery if reopened - independent convergence."),
+        ("Dagenham", "FINDING: Night turnout penalty is station-specific: Dagenham jumps 80s (day) to 127s (night), +47s; city-wide median turnout is +38s slower at night."),
+        ("London", "FINDING: Simulator validated on held-out 2025: mean +2.4%, p90 -3.7%; replays a year of London (130k incidents) in ~3s at ~40k incidents/sec."),
+    ]:
+        remember("analysis", loc, "info", narr)
     if speak:
         tts("Brigade Watch online. Beginning overnight patrol of the London replay.", play=False)
     hb = 0
