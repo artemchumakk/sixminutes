@@ -87,7 +87,7 @@
   <span style="flex:1"></span>
   <span class="chip duty" id="dutychip">BRIGADE WATCH · connecting…</span>
   <span class="chip spark">DGX SPARK GB10 · NEMOTRON · trained 1.8s</span>
-  <span class="chip a">FIRE A</span><span class="chip">POLICE B</span><span class="chip">AMB B−</span>
+  <span class="chip a">FIRE A</span><span class="chip" id="chip-police" onclick="toggleLayer('police')" style="cursor:pointer">POLICE B</span><span class="chip" id="chip-ambulance" onclick="toggleLayer('ambulance')" style="cursor:pointer">AMB B−</span>
 </header>
 
 <div id="askwrap">
@@ -349,6 +349,25 @@ async function askAgent(){
   finally { btn.disabled=false; btn.textContent="ASK"; }
 }
 document.getElementById("ask").addEventListener("keydown",e=>{ if(e.key==="Enter") askAgent(); });
+
+// ---------- teammate tier layers (police / ambulance) ----------
+const tierLayers = {};
+async function toggleLayer(svc){
+  const chip=document.getElementById("chip-"+svc);
+  if(tierLayers[svc]){ map.removeLayer(tierLayers[svc]); delete tierLayers[svc];
+    chip.style.color=""; chip.style.borderColor=""; return; }
+  try{
+    const gj=await fetch(API+"/layers/"+svc).then(r=>{ if(!r.ok) throw 0; return r.json(); });
+    const ws=gj.features.map(f=>f.properties.weight||1), wmax=Math.max(...ws);
+    tierLayers[svc]=L.geoJSON(gj,{pointToLayer:(f,ll)=>L.circleMarker(ll,{
+      pane:"overlayPane", radius:Math.max(1.5, 7*Math.sqrt((f.properties.weight||1)/wmax)),
+      weight:0, fillColor:svc==="police"?"#b78cff":"#5fdbc8", fillOpacity:.4})
+      .bindTooltip(`${f.properties.cell||""} · ${svc} weight ${Math.round(f.properties.weight||0)}`,{className:"stn-tip"})
+    }).addTo(map);
+    chip.style.color=svc==="police"?"#b78cff":"#5fdbc8"; chip.style.borderColor=chip.style.color;
+    narrate(`${svc.toUpperCase()} demand layer on — Tier B (granular demand, transferred physics, aggregate validation).`);
+  }catch(e){ narrate(`No ${svc} layer yet — that tier's parquets haven't landed.`); }
+}
 
 // ---------- duty log + status chips ----------
 async function duty(){
