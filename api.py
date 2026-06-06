@@ -322,14 +322,27 @@ def ask(a: Ask) -> dict:
         ASK_BUSY.release()
 
 
+INTERESTING_EVENTS = {"notable", "investigation", "experiment", "chapter", "briefing", "analysis"}
+
+
 @app.get("/session/tail")
 def session_tail(n: int = 30) -> dict:
-    """Duty log: tail the newest session JSONL (patrol or ask process)."""
+    """Duty log: tail the newest session JSONL, noise filtered (no heartbeats/tts/tool spam)."""
     files = sorted(Path("logs").glob("session_*.jsonl"), key=lambda p: p.stat().st_mtime)
     if not files:
         return {"file": None, "lines": []}
-    lines = files[-1].read_text().strip().splitlines()[-n:]
-    return {"file": files[-1].name, "lines": [json.loads(x) for x in lines]}
+    out = []
+    for x in reversed(files[-1].read_text().strip().splitlines()):
+        try:
+            rec = json.loads(x)
+        except json.JSONDecodeError:
+            continue
+        k = rec.get("kind")
+        if k in ("user", "agent") or (k == "event" and rec.get("event_kind") in INTERESTING_EVENTS):
+            out.append(rec)
+        if len(out) >= n:
+            break
+    return {"file": files[-1].name, "lines": list(reversed(out))}
 
 
 @app.get("/wards_geo")
@@ -375,6 +388,12 @@ def findings() -> list[dict]:
         {"id": "validated", "number": "±5%", "title": "Validated against blind 2025",
          "line": "Calibrated on 2024, tested on 130k unseen incidents: mean +2.4%, p90 −3.7%.",
          "ask": "How do I know your simulations are trustworthy?"},
+        {"id": "afa", "number": "£5.0M", "title": "The false-alarm tax has addresses",
+         "line": "39 buildings cry wolf monthly — hospitals worst (61 calls/yr at one NW1 site).",
+         "ask": "Which buildings waste the most fire-brigade time on false alarms, and what does it cost?"},
+        {"id": "coverreal", "number": "7,288", "title": "Cover moves are daily LFB practice",
+         "line": "3.5% of mobilisations already deploy from non-home stations — we rank those moves by math.",
+         "ask": "How often does LFB actually move pumps between stations, and how does your cover recommender relate to that?"},
     ]
 
 

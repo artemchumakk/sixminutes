@@ -6,11 +6,13 @@ DATA = Path(__file__).parent / "data"
 
 INC_COLS = [
     "IncidentNumber", "DateOfCall", "CalYear", "HourOfCall", "IncidentGroup",
-    "StopCodeDescription", "PropertyCategory", "IncGeo_BoroughName", "IncGeo_WardName",
-    "Easting_rounded", "Northing_rounded", "IncidentStationGround",
-    "FirstPumpArriving_AttendanceTime", "FirstPumpArriving_DeployedFromStation",
+    "StopCodeDescription", "SpecialServiceType", "PropertyCategory", "PropertyType",
+    "IncGeo_BoroughName", "IncGeo_WardName",
+    "Easting_rounded", "Northing_rounded", "IncidentStationGround", "UPRN",
+    "Postcode_district", "FirstPumpArriving_AttendanceTime", "FirstPumpArriving_DeployedFromStation",
     "SecondPumpArriving_AttendanceTime", "SecondPumpArriving_DeployedFromStation",
-    "NumPumpsAttending", "PumpMinutesRounded",
+    "NumStationsWithPumpsAttending", "NumPumpsAttending", "PumpMinutesRounded",
+    "Notional Cost (£)", "NumCalls",
 ]
 
 
@@ -34,7 +36,7 @@ def load_mob(path: str) -> pl.DataFrame:
     df = pl.read_csv(DATA / path, infer_schema_length=50000, encoding="utf8-lossy")
     return df.with_columns(
         pl.col("IncidentNumber").cast(pl.Utf8),
-        pl.col("DateAndTimeMobilised").str.to_datetime("%d/%m/%Y %H:%M:%S", strict=False),
+        pl.col("DateAndTimeMobilised").str.to_datetime("%d/%m/%Y %H:%M", strict=False),
         pl.col("TurnoutTimeSeconds").cast(pl.Int32, strict=False),
         pl.col("TravelTimeSeconds").cast(pl.Int32, strict=False),
         pl.col("AttendanceTimeSeconds").cast(pl.Int32, strict=False),

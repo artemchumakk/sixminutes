@@ -35,3 +35,5 @@ data/processed/geo/*
 !data/processed/police_damage.parquet
 !data/processed/police_response_anchors.parquet
 !data/processed/geo/police_*.geojson
+!data/processed/fire_damage_v2.parquet
+!data/processed/sweep_112.parquet

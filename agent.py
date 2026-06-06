@@ -65,6 +65,16 @@ def db() -> sqlite3.Connection:
     return c
 
 
+def remember_once(kind: str, location: str, severity: str, narrative: str, sim_date: str = "") -> None:
+    """Idempotent remember — supervisor restarts must not duplicate seeds."""
+    c = db()
+    n = c.execute("SELECT COUNT(*) FROM events WHERE kind=? AND narrative=?",
+                  (kind, narrative)).fetchone()[0]
+    c.close()
+    if n == 0:
+        remember(kind, location, severity, narrative, sim_date)
+
+
 def remember(kind: str, location: str, severity: str, narrative: str, sim_date: str = "") -> None:
     c = db()
     c.execute("INSERT INTO events(minute, wall_ts, sim_date, kind, location, severity, narrative) VALUES(?,?,?,?,?,?,?)",
@@ -171,9 +181,9 @@ def tool_ui(action: str = "", steps: list[dict] | None = None, **kwargs) -> dict
 
 TOOLS_DOC = """You can call tools by replying ONLY a JSON object (no prose around it):
   {"tool":"run_scenario","args":{"close":["<StationName>"],"pump_delta":{},"baseline":"current"}}   -> simulate closing/changing stations (validated digital twin, latest-12-months replay). baseline "pre2014" = the reconstructed 112-station pre-2014 London (use for any 2014 question; closing 2014 station names is allowed there: Clerkenwell, Westminster, Southwark, Belsize, Kingsland, Knightsbridge, Downham, Woolwich, Bow, Silvertown)
-  {"tool":"sql","args":{"query":"SELECT ..."}}                        -> read-only SQL over: incidents(IncidentNumber, DateOfCall, CalYear, HourOfCall, IncidentGroup, StopCodeDescription, PropertyCategory, IncGeo_BoroughName, IncGeo_WardName, FirstPumpArriving_AttendanceTime, NumPumpsAttending, ...), mobilisations(TurnoutTimeSeconds, TravelTimeSeconds, AttendanceTimeSeconds, DeployedFromStation_Name, DelayCode_Description, ...), stations(DeployedFromStation_Name, E, N, turnout_med), closure_damage(station-level damage if closed)
+  {"tool":"sql","args":{"query":"SELECT ..."}}                        -> read-only SQL over: incidents(IncidentNumber, DateOfCall, CalYear, HourOfCall, IncidentGroup, StopCodeDescription, SpecialServiceType, PropertyCategory, PropertyType, IncGeo_BoroughName, IncGeo_WardName, UPRN, Postcode_district, IncidentStationGround, FirstPumpArriving_AttendanceTime, NumStationsWithPumpsAttending, NumPumpsAttending, PumpMinutesRounded, "Notional Cost (£)", NumCalls, ...), mobilisations(TurnoutTimeSeconds, TravelTimeSeconds, AttendanceTimeSeconds, DeployedFromStation_Name, DeployedFromLocation, DelayCode_Description, ...), stations(DeployedFromStation_Name, E, N, turnout_med), closure_damage(station-level damage if closed). Quote "Notional Cost (£)" exactly like that. UPRN is redacted for dwellings (non-residential only). DeployedFromLocation != 'Home Station' = real standby/cover moves.
   {"tool":"recall","args":{"query":"Camden"}} or {"args":{"minute":14}} -> your session memory (events you observed earlier)
-  {"tool":"recommend_cover","args":{"stripped":["Croydon"],"hours":[22,6]}} -> REAL-TIME REPOSITIONING: pumps at these stations just committed to a major incident; sweeps ~20 candidate pump moves through the twin and returns the ranked best cover moves (promise_breaks_avoided), the uncovered damage map, and worst wards. Use for any "pumps committed / cover move / standby / where should pumps sit" question. Takes ~30s - tell the user you are sweeping moves first via ui.narrate.
+  {"tool":"recommend_cover","args":{"stripped":["<StationName>"],"hours":[22,6]}} -> REAL-TIME REPOSITIONING (NOTE: cover moves target the FIRST stripped station only - for multiple stripped stations, call once per target): pumps at these stations just committed to a major incident; sweeps ~20 candidate pump moves through the twin and returns the ranked best cover moves (promise_breaks_avoided), the uncovered damage map, and worst wards. Use for any "pumps committed / cover move / standby / where should pumps sit" question. Takes ~30s - tell the user you are sweeping moves first via ui.narrate.
   run_scenario and recommend_cover both accept "hours":[h0,h1] - the night map [22,6] vs the day map [10,18]. Use hours whenever the user says tonight/at night/2am/rush hour.
   {"tool":"ui","args":{"action":"...", ...}} -> OPERATE THE WALL DASHBOARD (the Ghost Operator). Actions:
      {"action":"narrate","text":"one or two short sentences"}  caption + spoken aloud
@@ -362,6 +372,7 @@ def patrol(speak: bool, accel: int = 60) -> None:
              f"Patrol started. Watching the latest 12 months of London ({days[0]} -> {days[-1]}) "
              f"at {accel}x: {inc.height:,} incidents across {len(days)} days queued.")
     # seed today's validated findings so voice recall can answer questions about them
+    seed = remember_once
     for loc, narr in [
         ("Biggin Hill", "FINDING: Biggin Hill is London's quietest station (385 calls/yr) yet closing it adds +215s locally and pushes 9.1% of its calls past the 6-minute target; call volume correlates NEGATIVELY (-0.18) with closure damage."),
         ("Whitechapel", "FINDING: Whitechapel, 7x busier than Biggin Hill, is among the SAFEST closures (+51s local) due to overlapping central cover - the spreadsheet method ranks closures backwards."),
@@ -369,7 +380,7 @@ def patrol(speak: bool, accel: int = 60) -> None:
         ("Dagenham", "FINDING: Night turnout penalty is station-specific: Dagenham jumps 80s (day) to 127s (night), +47s; city-wide median turnout is +38s slower at night."),
         ("London", "FINDING: Simulator validated on held-out 2025: mean +2.4%, p90 -3.7%; replays a year of London (130k incidents) in ~3s at ~40k incidents/sec."),
     ]:
-        remember("analysis", loc, "info", narr)
+        seed("analysis", loc, "info", narr)
     if speak:
         tts("Brigade Watch online. Beginning overnight patrol of the London replay.", play=False)
     hb = 0
