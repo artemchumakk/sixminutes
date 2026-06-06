@@ -7,15 +7,8 @@ export default function WorkspaceSelect({ onEnter }: { onEnter: (id: ServiceId) 
     <div className="flex min-h-full flex-col items-center justify-center px-6 py-16">
       <div className="w-full max-w-3xl">
         <div className="mb-10 text-center">
-          <div className="mb-3 text-[12px] font-medium uppercase tracking-[0.3em] text-neutral-400">
-            London Blue-Light Digital Twin
-          </div>
-          <h1 className="text-4xl font-semibold tracking-tight text-neutral-900">
-            SIX<span className="text-neutral-300">·</span>MINUTES
-          </h1>
-          <p className="mt-3 text-[15px] text-neutral-500">
-            Choose your workspace to enter the dispatch console.
-          </p>
+          <h1 className="text-4xl font-semibold tracking-tight text-neutral-900">WARDEN</h1>
+          <p className="mt-2.5 text-[14px] text-neutral-400">London&apos;s blue-light digital twin</p>
         </div>
 
         <div className="grid gap-3 sm:grid-cols-3">
@@ -60,9 +53,6 @@ export default function WorkspaceSelect({ onEnter }: { onEnter: (id: ServiceId) 
           })}
         </div>
 
-        <p className="mt-8 text-center text-[12px] text-neutral-400">
-          Fire &amp; Police workspaces owned by parallel teams · Ambulance live
-        </p>
       </div>
     </div>
   );
