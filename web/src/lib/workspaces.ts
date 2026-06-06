@@ -18,8 +18,8 @@ export const WORKSPACES: Workspace[] = [
     icon: "▲",
     promiseMin: 6,
     accent: "#fb923c",
-    available: false,
-    blurb: "6-min promise · owned by the fire tier team",
+    available: true,
+    blurb: "6-min promise · validated twin · click stations, watch London re-simulate",
   },
   {
     id: "police",

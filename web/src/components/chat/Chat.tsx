@@ -5,6 +5,7 @@ import { cx } from "../ui/primitives";
 import Composer from "./Composer";
 import ResultCard from "./ResultCard";
 import { RecordingBar, SpeakingOrb } from "./VoiceMode";
+import FireMap from "../fire/FireMap";
 
 let idc = 0;
 const nid = () => `m${++idc}`;
@@ -92,6 +93,21 @@ export default function Chat({
           <div className="mx-auto w-full max-w-3xl">
             <RecordingBar accent={ws.accent} onStop={onToggleVoice} />
           </div>
+        </div>
+      </div>
+    );
+  }
+
+  // ---- fire workspace: the validated twin lives where the thread would be ----
+  // (composer + sidebar + everything else: untouched, per migration plan)
+  if (ws.id === "fire") {
+    return (
+      <div className="flex h-full flex-col">
+        <div className="min-h-0 flex-1">
+          <FireMap accent={ws.accent} />
+        </div>
+        <div className="px-4 pb-4">
+          <div className="mx-auto w-full max-w-3xl">{composer}</div>
         </div>
       </div>
     );
