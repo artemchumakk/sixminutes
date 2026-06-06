@@ -20,3 +20,6 @@ node_modules/
 !data/stations.parquet
 !data/closure_damage.parquet
 !data/ambsys.csv
+
+logs/
+!logs_box_backup/
