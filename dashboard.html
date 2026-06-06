@@ -126,7 +126,9 @@
   </aside>
 </main>
 
-<div id="ticker"><div id="tdot"></div><div id="ttext">Brigade Watch standing by. Ask the room anything.</div></div>
+<div id="ticker"><div id="tdot"></div><div id="ttext">Brigade Watch standing by. Ask the room anything.</div>
+  <span style="flex:1"></span>
+  <button onclick="stopShow()" style="background:transparent;border:1px solid var(--line);color:var(--dim);border-radius:6px;font:inherit;font-size:11px;padding:3px 10px;cursor:pointer">⏹ STOP</button></div>
 <audio id="voice"></audio>
 
 <script>
@@ -270,13 +272,19 @@ async function comparePostures(keys){
 }
 
 // ---------- the Ghost Operator executor ----------
-let cursor=0, queue=[], executing=false;
+// cursor starts at the LIVE TIP: never replay history on page load
+let cursor=null, queue=[], executing=false;
+fetch(API+"/ui/commands?since=999999999").then(r=>r.json()).then(d=>{ cursor=d.next; });
 setInterval(async ()=>{
+  if(cursor===null) return;
   try{
     const d=await fetch(API+`/ui/commands?since=${cursor}`).then(r=>r.json());
     cursor=d.next; queue.push(...d.commands);
   }catch(e){}
 },600);
+function stopShow(){ queue.length=0; executing=false;
+  const v=document.getElementById("voice"); v.pause(); v.src="";
+  narrate("Stopped."); }
 setInterval(async ()=>{
   if(executing||!queue.length) return;
   executing=true;
