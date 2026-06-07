@@ -76,6 +76,7 @@ const FireMap = forwardRef<
   const stationsRef = useRef<Record<string, L.CircleMarker>>({});
   const wardsRef = useRef<Record<string, L.Path>>({});
   const closedRef = useRef<Set<string>>(new Set());
+  const committedRef = useRef<Set<string>>(new Set()); // engines out on a job (amber) — distinct from closed
   const hoursRef = useRef<HourBand>(null);
   const debounceRef = useRef<number | null>(null);
 
@@ -198,12 +199,13 @@ const FireMap = forwardRef<
   const paintStations = useCallback(() => {
     Object.entries(stationsRef.current).forEach(([name, m]) => {
       const isClosed = closedRef.current.has(name);
+      const isCommitted = committedRef.current.has(name); // engines out, station NOT closed
       const isHome = homeRef.current === name;
       m.setStyle({
-        color: isClosed ? "#dc2626" : isHome ? "#171717" : accent,
-        weight: isHome ? 3 : 1.5,
-        fillColor: isClosed ? "#dc2626" : accent,
-        fillOpacity: isClosed ? 0.85 : isHome ? 0.75 : 0.5,
+        color: isClosed ? "#dc2626" : isCommitted ? "#d97706" : isHome ? "#171717" : accent,
+        weight: isHome || isCommitted ? 3 : 1.5,
+        fillColor: isClosed ? "#dc2626" : isCommitted ? "#f59e0b" : accent,
+        fillOpacity: isClosed ? 0.85 : isCommitted ? 0.8 : isHome ? 0.75 : 0.5,
       });
     });
   }, [accent]);
@@ -418,12 +420,22 @@ const FireMap = forwardRef<
           }
           break;
         case "reset":
+          committedRef.current = new Set();
           setClosedSet(() => new Set());
           paintWards({});
           setResult(null);
           break;
         case "close_stations":
           setClosedSet((prev) => new Set([...prev, ...(c.names ?? [])]));
+          (c.names ?? []).forEach((n) => {
+            const m = stationsRef.current[n];
+            if (m) pulse(m);
+          });
+          break;
+        case "commit_stations":
+          // engines committed to a job — amber, never red, never in the closed set
+          (c.names ?? []).forEach((n) => committedRef.current.add(n));
+          paintStations();
           (c.names ?? []).forEach((n) => {
             const m = stationsRef.current[n];
             if (m) pulse(m);
@@ -452,7 +464,7 @@ const FireMap = forwardRef<
           break; // 2014/compare verbs live on the wall; harmless to skip here
       }
     },
-    [paintWards, run, setClosedSet, animateMove, pulse]
+    [paintWards, paintStations, run, setClosedSet, animateMove, pulse]
   );
 
   const stopBusPolling = useCallback(() => {

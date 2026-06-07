@@ -11,6 +11,7 @@ GET  /layers/{svc}  GeoJSON overlays dropped by service tiers (fire|police|ambul
 from __future__ import annotations
 
 import json
+import math
 import os
 import threading
 import time
@@ -329,7 +330,7 @@ def cover(c: Cover) -> dict:
                       "pushed_with_move": m_pushed,
                       "promise_breaks_avoided": s_pushed - m_pushed,
                       "hole_response_improvement_s": round(hole_improve, 1),
-                      "expected_breaches_avoided_window": round(per_window(s_pushed - m_pushed), 2)})
+                      "expected_breaches_avoided_window": math.ceil(per_window(s_pushed - m_pushed))})
     moves.sort(key=lambda m: -m["promise_breaks_avoided"])
 
     worst = (stripped_run.with_columns(d=stripped_run["sim_s"] - base["sim_s"])
@@ -357,7 +358,7 @@ def ui_commands(since: int = 0) -> dict:
     return {"next": len(UI_COMMANDS), "commands": UI_COMMANDS[max(0, since):]}
 
 
-ALLOWED_CMDS = {"narrate", "reset", "close_stations", "open_2014", "run_scenario",
+ALLOWED_CMDS = {"narrate", "reset", "close_stations", "commit_stations", "open_2014", "run_scenario",
                 "compare_postures", "focus_ward", "focus_station", "show_finding",
                 "show_validation", "show_metric", "audio", "move_unit"}
 STOP_FLAG = threading.Event()

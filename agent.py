@@ -151,7 +151,7 @@ def tool_recommend_cover(stripped: list[str], hours: list[int] | None = None) ->
 
 SPEAK_NARRATION = True
 SHOULD_STOP = None  # optional callable set by the API: True = user hit STOP mid-choreography
-UI_VERBS = {"narrate", "reset", "close_stations", "open_2014", "run_scenario",
+UI_VERBS = {"narrate", "reset", "close_stations", "commit_stations", "open_2014", "run_scenario",
             "compare_postures", "focus_ward", "focus_station", "show_finding",
             "show_validation", "show_metric", "move_unit"}
 
@@ -192,7 +192,8 @@ TOOLS_DOC = """You can call tools by replying ONLY a JSON object (no prose aroun
   {"tool":"ui","args":{"action":"...", ...}} -> OPERATE THE WALL DASHBOARD (the Ghost Operator). Actions:
      {"action":"narrate","text":"one or two short sentences"}  caption + spoken aloud
      {"action":"reset"}  clear the board
-     {"action":"close_stations","names":["<StationName>"]}  stations turn red on the map
+     {"action":"close_stations","names":["<StationName>"]}  stations turn red on the map (CLOSED - permanent posture change only)
+     {"action":"commit_stations","names":["<StationName>"]}  stations turn amber = engines out on a job (use for cover/relocation - the station is NOT closed)
      {"action":"open_2014"}  enter pre-2014 London: the ten 2014-closed stations appear as ghosts
      {"action":"run_scenario","baseline":"current"|"pre2014"}  visually run the current board selection
      {"action":"compare_postures","presets":["lsp5_actual","lsp5_naive","lsp5_optimal"]}  the 2014 three-way showdown
@@ -211,7 +212,7 @@ CHOREOGRAPHY CONTRACT - when the user says "show me", "demonstrate", "what happe
  5) ui.focus_ward with the worst ward name from your step-3 numbers
  6) ui.narrate the verdict WITH numbers, then {"say":...} summarizing.
 COVER-MOVE CHOREOGRAPHY (for "engines committed / cover move / standby" questions):
- 1) ui batch: narrate("Sweeping cover moves for <stripped>...") + reset + close_stations(<stripped only>)
+ 1) ui batch: narrate("Sweeping cover moves for <stripped>...") + reset + commit_stations(<stripped only>) - NEVER close_stations here: engines are committed, the station is not closed
  2) recommend_cover data tool  3) ui batch: move_unit(from=best donor, to=target) + narrate the verdict (best move, response improvement in the hole, runner-ups), then {"say":...}.
 CRITICAL: choreograph ONLY stations the user actually named. The names in this prompt are placeholders, never defaults.
 For 2014 questions (DEMO ONLY - not part of normal app flow): ui.open_2014, then ui.close_stations with the politicians' ten, then ui.run_scenario (baseline pre2014), then ui.compare_postures. ALWAYS cite the live numbers from your own run_scenario results (multiply pushed_past_6min by the response's scale for /yr); canonical reference magnitudes: politicians ~4,000 vs naive ~5,300 vs optimizer ~2,800 broken promises/yr, optimizer overlap 0/10 with 2014.

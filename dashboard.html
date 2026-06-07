@@ -140,6 +140,7 @@ map.createPane("stns"); map.getPane("stns").style.zIndex = 620;  // stations abo
 
 // ---------- state ----------
 const closed = new Set();
+const committed = new Set();   // engines out on a job (amber) - NOT closed
 let mode2014 = false, stations = {}, ghosts = {}, wardPolys = {}, wardCentroids = {}, presetDefs = {};
 const norm = s => (s||"").toUpperCase().replace(/&/g,"AND").replace(/[.'’]/g,"").replace(/\s+/g," ").trim();
 
@@ -205,7 +206,7 @@ function toggle2014(){
 }
 
 function paint(){
-  Object.entries(stations).forEach(([n,m])=>m.setStyle({color:closed.has(n)?"#ff4545":"#46c2ff",fillColor:closed.has(n)?"#ff4545":"#46c2ff",fillOpacity:closed.has(n)?.85:.55}));
+  Object.entries(stations).forEach(([n,m])=>{const col=closed.has(n)?"#ff4545":committed.has(n)?"#f5a623":"#46c2ff";m.setStyle({color:col,fillColor:col,fillOpacity:closed.has(n)||committed.has(n)?.85:.55});});
   Object.entries(ghosts).forEach(([n,m])=>m.setStyle({color:closed.has(n)?"#ff4545":"#9d7bff",fillOpacity:closed.has(n)?.6:0}));
   const el=document.getElementById("chips");
   el.innerHTML = closed.size? "" : '<span class="strip">click stations to close them</span>';
@@ -310,8 +311,9 @@ async function exec(c){
   switch(c.type){
     case "narrate": narrate(c.text); break;
     case "audio": { const v=document.getElementById("voice"); v.src=API+c.url; v.play().catch(()=>{}); break; }
-    case "reset": closed.clear(); if(mode2014) toggle2014(); paint(); break;
+    case "reset": closed.clear(); committed.clear(); if(mode2014) toggle2014(); paint(); break;
     case "close_stations": (c.names||[]).forEach(n=>closed.add(n)); paint(); break;
+    case "commit_stations": (c.names||[]).forEach(n=>committed.add(n)); paint(); break;
     case "open_2014": if(!mode2014) toggle2014(); break;
     case "run_scenario": await runScenario(); break;
     case "compare_postures": await comparePostures(c.presets||["lsp5_actual","lsp5_naive","lsp5_optimal"]); break;
