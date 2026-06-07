@@ -100,7 +100,9 @@ ssh spark 'loginctl enable-linger nvidia; tmux new -d -s super120 "export PATH=$
 - Cumulative story: TWO overnight sessions (Sat on the Spark, Sun on the Mac after the
   Spark froze) — resilience is part of the narrative
 
-## Next (SUNDAY.md sequence)
-08:00 box power-cycle + rebuild → 08:30 judge drill + WiFi-off drill →
-fill [SUNDAY] markers in SUBMISSION.md/VIDEO_SCRIPT.md with patrol numbers →
-09:40 record video → **10:40 SUBMIT** (hard 11:00)
+## Next (SUNDAY.md sequence) — all doc markers already filled overnight
+08:00 box power-cycle + rebuild (recipe above) → 08:30 judge drill live + WiFi-off drill →
+09:40 record video (script's session claims now use real numbers) → **10:40 SUBMIT** (hard 11:00)
+
+If anything died overnight: `./run_api.sh` (API+wall), `cd web && npm run dev` (web),
+`./run_patrol.sh` (patrol — only if you want it live during judging).
