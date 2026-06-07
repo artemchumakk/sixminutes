@@ -1,28 +1,32 @@
 # 🎬 The 2014 Film — Speaker Notes
 
-## ⚡ THE 40-SECOND CUT (conversational + technical, numbers sync to the UI)
-*(red stations + £45M / 14 / −50% counters)* "2014, austerity: London needs
-forty-five million in savings, and this plan delivers twenty-nine of it — ten
-stations, fourteen engines, five hundred and fifty-two posts. And fair's fair —
-fires had halved in a decade. The plan's own line was that response targets would
-be maintained."
-*(heat + 63s / 4,049 / +9.3s counters)* "So we measured it. Difference-in-
-differences — those ten neighbourhoods against the rest of London as the control:
-sixty-three seconds slower. And our twin, which never saw any pre-2014 data,
-prices the same wound at fifty-two. Two independent methods, one answer."
-*(search HUD, odometer)* "Then we asked: same cuts, better ten? Closures
-interact — you can't rank stations one at a time — so it tests whole networks:
-a hundred and thirty-three thousand incidents per candidate, three hundred
-simulated years."
-*(teal ten + 2,762 / ×1.47 / 0-10 counters)* "Ten different stations, zero
-overlap — and four thousand missed responses a year drops to twenty-seven
-hundred. A third less damage, same money."
+## ⚡ THE NARRATION (~50s — story arc: necessity → choice → result → could we do better → technical → results)
+*(calm map)* "2014, austerity: forty-five million has to come out of London's fire
+budget — and the maths said ten stations had to go. The only question was: which
+ten?"
+*(red stations appear)* "They scored stations one at a time — activity, cost — and
+said response targets would hold. Here's what they chose."
+*(heat blooms + 63s / 4,049 / +9.3s counters)* "And here's the result. Diff-in-diff
+against the rest of London as control: sixty-three seconds slower in those
+neighbourhoods — four thousand missed six-minute responses a year. Our twin, never
+shown pre-2014 data, prices the same wound at fifty-two. Two independent methods,
+one answer."
+*(search HUD — the technical beat)* "So: could we do better? We ran a set-aware
+sequential greedy. Objective: annual misses of the six-minute standard. Every
+candidate set gets a discrete-event replay of a full year — a hundred and
+thirty-three thousand incidents — under common random numbers, so the deltas are
+pure signal, not seed noise. Ten rounds, three hundred simulated years, and a full
+network re-score after every lock — because closures interact."
+*(teal ten + 2,762 / ×1.47 / 0-10 counters)* "Ten different stations. Zero overlap.
+Twenty-seven hundred misses instead of four thousand — a third less damage, same
+savings."
 *(hold)* "Counting calls is easy. Coverage is a network."
 
-*~35s version: drop "And fair's fair — fires had halved in a decade."*
-*Evidence for "targets maintained": LFB's 2013 savings publication — "savings
-worth £28.8m over the next two years while maintaining existing response time
-targets" (london-fire.gov.uk, 2013 news).*
+*To hit 40s: cut "Two independent methods, one answer" sentence pair (the 52s
+convergence) — or keep it and trim "under common random numbers… seed noise."*
+*Evidence for "said response targets would hold": LFB's 2013 savings publication —
+"savings worth £28.8m over the next two years while maintaining existing response
+time targets" (london-fire.gov.uk, 2013 news).*
 
 ---
 
