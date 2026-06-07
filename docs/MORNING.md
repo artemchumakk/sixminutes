@@ -1,5 +1,17 @@
 # ☀️ MORNING REPORT — Sunday, 7 June 2026
 
+> **09:55 final update — the 120B verdict.** The box never crashed overnight (uptime
+> intact — it OOM-thrashed and self-recovered). Rebuilt at 09:38 with full access:
+> tunnel restored (`alien-argued-crafts-truck`, published to ntfy), 120B relaunched
+> with ninja+nvcc and 0.80 util. **It died a third time, identically: silent
+> EngineCore death in Mamba2 SSD Triton warmup, with 24GB free** — memory ruled out;
+> this vLLM build's Mamba2 Triton kernels are incompatible with GB10/sm_121.
+> Fallback executed: **Nano-30B-FP8 serving on the box** (the honest "Nemotron runs
+> locally on the Spark" artifact); **runtime stays Nebius Super-120B**. Submission
+> language: Spark = training + local Nemotron serving; 120B-NVFP4 serve = documented
+> negative result (three reproducible kernel-level failures — that's research, say it
+> proudly).
+
 *Written by the overnight session. Read this first, then SUNDAY.md for the runbook.*
 
 ## TL;DR
