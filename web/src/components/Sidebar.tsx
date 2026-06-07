@@ -30,16 +30,59 @@ const INITIAL_WORKSPACES: WorkspaceFolderData[] = [
   },
 ];
 
-// fire workspace: the warden's board — click your station on the map first and
-// "my ground / my pumps" resolve to it (board context flows to the agent)
-const FIRE_QUICK_ASKS = [
-  "My pumps just committed — who covers my ground?",
-  "Where does the 6-minute promise break tonight?",
-  "Rank stations by how irreplaceable they are",
-  "A big job takes six pumps from my patch — knock-on and best cover?",
-  "Which buildings keep crying wolf — and what does it cost?",
-  "Why should I trust this?",
-  "Reset the board",
+// fire workspace: the warden's board, grouped by time horizon — click your
+// station on the map first and "my ground / my pumps" resolve to it
+const FIRE_ANALYSES: { group: string; items: { title: string; hint: string; ask: string }[] }[] = [
+  {
+    group: "Right now",
+    items: [
+      {
+        title: "Who covers my ground?",
+        hint: "your pumps just committed",
+        ask: "My pumps just committed — who covers my ground?",
+      },
+      {
+        title: "Best cover move",
+        hint: "six pumps gone from my patch",
+        ask: "A big job takes six pumps from my patch — knock-on and best cover?",
+      },
+    ],
+  },
+  {
+    group: "Tonight",
+    items: [
+      {
+        title: "Where does the promise break?",
+        hint: "the night map's thin ice",
+        ask: "Where does the 6-minute promise break tonight?",
+      },
+      {
+        title: "My station: night vs day",
+        hint: "the after-dark difference",
+        ask: "Compare closing my station at night versus during the day.",
+      },
+    ],
+  },
+  {
+    group: "Planning",
+    items: [
+      {
+        title: "Rank irreplaceable stations",
+        hint: "the criticality league",
+        ask: "Rank stations by how irreplaceable they are",
+      },
+      {
+        title: "The crying-wolf buildings",
+        hint: "false alarms, in pounds",
+        ask: "Which buildings keep crying wolf — and what does it cost?",
+      },
+      {
+        title: "Why trust this?",
+        hint: "validation, plainly",
+        ask: "Why should I trust this?",
+      },
+    ],
+  },
 ];
 
 export default function Sidebar({
@@ -121,14 +164,33 @@ export default function Sidebar({
 
         {fire ? (
           <>
-            <Section>Suggested analyses</Section>
-            <nav className="flex flex-col gap-0.5">
-              {FIRE_QUICK_ASKS.map((q) => (
-                <PlainItem key={q} onClick={() => onQuickAsk?.(q)}>
-                  {q}
-                </PlainItem>
-              ))}
-            </nav>
+            {FIRE_ANALYSES.map((g) => (
+              <div key={g.group}>
+                <Section>{g.group}</Section>
+                <nav className="flex flex-col gap-1.5">
+                  {g.items.map((it) => (
+                    <button
+                      key={it.title}
+                      onClick={() => onQuickAsk?.(it.ask)}
+                      className="group rounded-lg border border-neutral-200 px-2.5 py-2 text-left transition-all hover:border-neutral-300 hover:bg-neutral-50 hover:shadow-[0_2px_8px_rgba(0,0,0,0.04)]"
+                    >
+                      <div className="text-[13px] font-medium text-neutral-800 group-hover:text-neutral-900">
+                        {it.title}
+                      </div>
+                      <div className="mt-0.5 text-[11px] text-neutral-400">{it.hint}</div>
+                    </button>
+                  ))}
+                </nav>
+              </div>
+            ))}
+            <div className="mt-4 px-2.5">
+              <button
+                onClick={() => onQuickAsk?.("Reset the board")}
+                className="text-[12px] text-neutral-400 underline-offset-2 hover:text-neutral-600 hover:underline"
+              >
+                Reset the board
+              </button>
+            </div>
           </>
         ) : (
           <>
