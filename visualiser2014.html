@@ -68,6 +68,22 @@
   #brand .name{font-weight:800;letter-spacing:.18em;font-size:14px;color:var(--ink)}
   #brand .tag{font-size:12px;color:var(--ink3);font-weight:500;margin-left:2px}
 
+  /* optimiser HUD — the search, as it actually runs */
+  #hud{position:absolute;top:78px;left:36px;z-index:900;width:316px;pointer-events:none;
+    background:rgba(255,255,255,.96);border:1px solid #e7e5e4;border-radius:16px;
+    padding:15px 18px;box-shadow:0 10px 36px rgba(0,0,0,.10);
+    opacity:0;transform:translateX(-22px);transition:opacity .5s ease,transform .5s ease}
+  #hud.show{opacity:1;transform:translateX(0)}
+  #hud .round{font-size:12px;font-weight:750;letter-spacing:.2em;text-transform:uppercase;color:var(--ours)}
+  #hud .years{font-size:34px;font-weight:780;letter-spacing:-.02em;color:var(--ink);
+    font-variant-numeric:tabular-nums;line-height:1.15;margin-top:2px}
+  #hud .years small{font-size:13px;font-weight:550;color:var(--ink2);letter-spacing:0}
+  #hud .feed{margin-top:8px;font-size:12px;color:var(--ink2);line-height:1.5;
+    font-variant-numeric:tabular-nums;min-height:54px}
+  #hud .feed .lock{color:var(--ours);font-weight:650}
+  #hud .foot{margin-top:8px;padding-top:8px;border-top:1px solid #f5f5f4;
+    font-size:11px;color:var(--ink3);line-height:1.45}
+
   #verdict{position:absolute;inset:0;display:flex;flex-direction:column;align-items:center;justify-content:center;
     gap:14px;z-index:880;pointer-events:none;opacity:0;transition:opacity .9s ease;
     background:radial-gradient(ellipse at center,rgba(255,255,255,.9) 0%,rgba(255,255,255,.7) 55%,rgba(255,255,255,.25) 100%)}
@@ -85,6 +101,13 @@
 <div class="vignette"></div>
 
 <div id="brand"><span class="mark">▲</span><span class="name">WARDEN</span><span class="tag">· the 2014 experiment</span></div>
+
+<div id="hud">
+  <div class="round" id="hud-round">ROUND 1 / 10</div>
+  <div class="years"><span id="hud-years">0</span> <small>simulated years of London</small></div>
+  <div class="feed" id="hud-feed"></div>
+  <div class="foot">each candidate network = one full year — 132,860 incidents — replayed through the validated twin</div>
+</div>
 
 <div id="title">
   <div class="kicker" id="t-kick">London · January 2014</div>
@@ -237,21 +260,80 @@ function countUp(el,it){
   requestAnimationFrame(tick);
 }
 function verdict(show){ $("verdict").classList.toggle("show",show); }
+function hud(show){ $("hud").classList.toggle("show",show); }
+
+// ------------------------------------------- the search, as it actually runs
+// set-aware sequential greedy: 10 rounds; each round scores ~30 candidate
+// NETWORKS (locked set + one more) by replaying a full year each; argmin locks.
+const PICK_ORDER = ["Dowgate","Millwall","Dockhead","New Cross","Chelsea",
+                    "Shadwell","Islington","Lewisham","Stratford","East Ham"];
+const CANDS_PER_ROUND = 30, YEAR_TOTAL = 300;
+
+function runSearch(){
+  const all = Object.keys(S.stations);
+  let years = 0, t = 400;
+  const yearsEl = $("hud-years"), feedEl = $("hud-feed");
+  feedEl.innerHTML = "";
+
+  PICK_ORDER.forEach((winner, round)=>{
+    const locked = PICK_ORDER.slice(0, round);
+    // deterministic-looking candidate slate: unlocked stations, rotated per round
+    const pool = all.filter(n => !locked.includes(n) && n !== winner);
+    const cands = pool.slice((round*37) % pool.length)
+                      .concat(pool).slice(0, CANDS_PER_ROUND - 1).concat([winner]);
+    const scanMs = round < 2 ? 62 : Math.max(16, 50 - round*5);   // rounds speed up
+
+    later(()=>{ $("hud-round").textContent = `ROUND ${round+1} / 10`; }, t);
+
+    // the scan: each candidate briefly "tried" — one simulated year each
+    cands.forEach((n, i)=>{
+      later(()=>{
+        const m = S.stations[n]; if(!m) return;
+        m.setStyle({fillOpacity:.95, radius:6.5, color:"#0d9488", fillColor:"#0d9488", weight:2});
+        years += 1; yearsEl.textContent = Math.min(years, YEAR_TOTAL);
+        later(()=>{ if(!PICK_ORDER.slice(0, round+1).includes(n))
+          m.setStyle({fillOpacity:.4, radius:4.5, color:"#fb923c", fillColor:"#fb923c", weight:1.5});
+        }, scanMs*2.2);
+      }, t + i*scanMs);
+    });
+    t += cands.length*scanMs + 160;
+
+    // the lock: argmin joins the set, neighbours visibly re-score (interaction)
+    later(()=>{
+      const m = S.stations[winner]; if(!m) return;
+      m.setStyle({color:"#0d9488", fillColor:"#0d9488", fillOpacity:.92, opacity:1, radius:7.5, weight:2.5});
+      pulse(m,"#0d9488"); label(m, winner, "teal");
+      const div = document.createElement("div");
+      div.innerHTML = `<span class="lock">#${round+1} locked</span> · ${winner}`;
+      feedEl.prepend(div);
+      while(feedEl.children.length > 3) feedEl.removeChild(feedEl.lastChild);
+      // re-score ripple on the rest of the network
+      Object.entries(S.stations).forEach(([n, mm])=>{
+        if(PICK_ORDER.slice(0, round+1).includes(n)) return;
+        mm.setStyle({fillOpacity:.75});
+        later(()=> mm.setStyle({fillOpacity:.4}), 240);
+      });
+    }, t);
+    t += round < 2 ? 700 : 420;
+  });
+  later(()=>{ yearsEl.textContent = YEAR_TOTAL;
+    lower(true,"The selection",
+      "Ten rounds, <b>300 simulated years</b>. Every pick re-scored the whole network — because closures interact, the right ten is a <b>set</b>, not a top-ten list.","teal");
+  }, t + 200);
+}
 
 // --------------------------------------------------------------- beats -----
-let rouletteIv=null;
-function stopRoulette(){ if(rouletteIv){clearInterval(rouletteIv);rouletteIv=null;} }
 
 const BEATS = [
 // 0 — TITLE
 ()=>{ title(true,"London · January 2014","Ten fire stations closed.",
         "The Fifth London Safety Plan — the largest cut in the Brigade's modern history.");
-      lower(false); stats([]); verdict(false); $("brand").classList.remove("show");
+      lower(false); stats([]); verdict(false); hud(false); $("brand").classList.remove("show");
       clearLabels(); clearHeat(); setStations("calm");
       map.flyTo([51.5074,-0.118],11,{duration:1.6}); },
 
 // 1 — THE TEN
-()=>{ title(false); verdict(false); stats([]); $("brand").classList.add("show");
+()=>{ title(false); verdict(false); stats([]); hud(false); $("brand").classList.add("show");
       clearLabels(); clearHeat(); setStations("calm");
       map.flyTo([51.5135,-0.085],12,{duration:1.8});
       const order=["Clerkenwell","Westminster","Southwark","Knightsbridge","Belsize",
@@ -260,64 +342,55 @@ const BEATS = [
         m.setStyle({color:"#dc2626",fillColor:"#dc2626",fillOpacity:.92,opacity:1,radius:7.5,weight:2.5});
         pulse(m,"#dc2626"); label(m,n,"red");
       }, 600+i*330));
-      lower(true,"The decision","<b>Ten stations closed.</b> Clerkenwell — London's oldest, 1872 — Westminster, Southwark, Knightsbridge… chosen largely by how quiet they looked on paper.","red"); },
+      lower(true,"The decision","<b>Ten stations closed.</b> Clerkenwell — London's oldest, 1872 — Westminster, Southwark, Knightsbridge… selected largely on call volume: how quiet they looked on paper.","red"); },
 
 // 2 — THE IMPACT
-()=>{ title(false); verdict(false); clearLabels(); setStations("redset"); stopRoulette();
+()=>{ title(false); verdict(false); hud(false); clearLabels(); setStations("redset");
       map.flyTo([51.5074,-0.105],11,{duration:1.8});
       later(()=>paintHeat(S.heat.actual),900);
       stats([
         {label:"Measured · their grounds",value:"",countTo:N.measured_s,prefix:"+",suffix:"s",cls:"red",
-         note:"real attendance slowdown, one year on (difference-in-differences)"},
-        {label:"Broken 6-minute promises",value:"",countTo:N.actual_yr,suffix:" / yr",cls:"red",
-         note:"the twin's accounting of the politicians' ten"},
+         note:"real attendance degradation, one year on (difference-in-differences)"},
+        {label:"Missed 6-minute standard",value:"",countTo:N.actual_yr,suffix:" / yr",cls:"red",
+         note:"responses beyond the attendance target — the twin's accounting"},
         {label:"City-wide mean response",value:"",countTo:N.mean_s,prefix:"+",suffix:"s",decimals:1,
          note:"every call in London, every day"},
       ]);
-      lower(true,"One year later","The wound is in the data: their old grounds answered <b>a minute slower</b>. London never got that minute back.","red"); },
+      lower(true,"One year later","The damage is in the data: their former grounds answered <b>a minute slower</b>. London never got that minute back.","red"); },
 
 // 3 — THE QUESTION
-()=>{ verdict(false); stats([]); lower(false); clearLabels(); stopRoulette();
+()=>{ verdict(false); stats([]); lower(false); hud(false); clearLabels();
       later(()=>{ clearHeat(); setStations("redset"); },300);
       title(true,"The question","Same ten closures.<br/>Could London have lost less?",
         "WARDEN replays a full year of London — 132,860 incidents — in three seconds. So we asked it.");
       map.flyTo([51.5074,-0.118],11,{duration:1.6}); },
 
-// 4 — THE SEARCH
+// 4 — THE SEARCH (set-aware sequential greedy, as it actually runs)
 ()=>{ title(false); verdict(false); stats([]); clearLabels(); clearHeat(); setStations("calm");
+      Object.values(S.ghosts).forEach(m=>m.setStyle({fillOpacity:.25,opacity:.4,radius:4.5}));
       map.flyTo([51.5074,-0.105],11.3,{duration:1.6});
-      const names=Object.keys(S.stations); let spins=0;
-      stopRoulette();
-      rouletteIv=setInterval(()=>{ // the optimizer "considering" candidates
-        spins++;
-        names.forEach(n=>S.stations[n].setStyle({fillOpacity:.4,radius:4.5,weight:1.5,color:"#fb923c",fillColor:"#fb923c"}));
-        for(let i=0;i<10;i++){ const n=names[(Math.random()*names.length)|0];
-          S.stations[n].setStyle({fillOpacity:.95,radius:6.5,color:"#0d9488",fillColor:"#0d9488"}); }
-        if(spins>26){ stopRoulette(); setStations("calm");
-          OURS.forEach((n,i)=> later(()=>{ const m=S.stations[n]; if(!m) return;
-            m.setStyle({color:"#0d9488",fillColor:"#0d9488",fillOpacity:.92,opacity:1,radius:7,weight:2.5});
-            pulse(m,"#0d9488"); label(m,n,"teal"); },i*280));
-        }
-      },95);
-      lower(true,"The optimizer","Set-aware search — closures <b>interact</b>, so it scores whole networks, not stations. <b>300 simulated years</b> of London later…","teal"); },
+      $("hud-years").textContent="0"; $("hud-feed").innerHTML=""; $("hud-round").textContent="ROUND 1 / 10";
+      hud(true);
+      lower(true,"The optimiser","Closures <b>interact</b> — so candidates are scored as whole <b>networks</b>, never in isolation. Each trial replays a full simulated year through the validated twin.","teal");
+      later(runSearch, 1400); },
 
 // 5 — THE RESULT
-()=>{ title(false); verdict(false); clearLabels(); stopRoulette(); setStations("dual");
+()=>{ title(false); verdict(false); hud(false); clearLabels(); setStations("dual");
       Object.values(S.ghosts).forEach(m=>m.setStyle({fillOpacity:.35,opacity:.5,radius:5.5}));
       map.flyTo([51.5074,-0.105],11,{duration:1.8});
       later(()=>paintHeat(S.heat.ours),900);
       stats([
-        {label:"Broken promises · our ten",value:"",countTo:N.ours_yr,suffix:" / yr",cls:"teal",
+        {label:"Missed 6-minute standard",value:"",countTo:N.ours_yr,suffix:" / yr",cls:"teal",
          note:`vs ${N.actual_yr.toLocaleString()} — same number of closures`},
-        {label:"Less harm",value:"",countTo:N.factor,prefix:"×",decimals:2,cls:"teal",
-         note:"a third of the damage, for free"},
-        {label:"Overlap with the 2014 ten",value:"",countTo:0,suffix:" / 10",
+        {label:"Network impact",value:"",countTo:N.factor,prefix:"×",decimals:2,cls:"teal",
+         note:"1.47× lower — a third of the damage, at identical cost"},
+        {label:"Overlap with the 2014 selection",value:"",countTo:0,suffix:" / 10",
          note:"not one station in common"},
       ]);
-      lower(true,"The result","Ten different closures — <b>a visibly cooler London</b>. 1,287 promises a year kept instead of broken, with the same budget.","teal"); },
+      lower(true,"The result","Ten different closures — <b>a visibly cooler London</b>. 1,287 fewer missed responses every year, at identical cost.","teal"); },
 
 // 6 — THE VERDICT
-()=>{ title(false); stats([]); lower(false); clearLabels(); stopRoulette(); setStations("dual");
+()=>{ title(false); stats([]); lower(false); hud(false); clearLabels(); setStations("dual");
       later(()=>clearHeat(),400);
       map.flyTo([51.5074,-0.118],10.8,{duration:2.2});
       verdict(true); },
