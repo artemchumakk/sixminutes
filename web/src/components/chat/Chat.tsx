@@ -16,11 +16,13 @@ export default function Chat({
   voiceActive,
   onToggleVoice,
   onRegisterAsk,
+  homeStation,
 }: {
   ws: Workspace;
   voiceActive: boolean;
   onToggleVoice: () => void;
   onRegisterAsk?: (fn: (text: string) => void) => void;
+  homeStation?: string | null;
 }) {
   const [messages, setMessages] = useState<ChatMessage[]>([]);
   const [input, setInput] = useState("");
@@ -199,6 +201,7 @@ export default function Chat({
         <FireMap
           ref={fireRef}
           accent={ws.accent}
+          homeStation={homeStation}
           onAnalysingChange={setFireAnalysing}
           onBusyChange={setFireBusy}
           onMessagesChange={setFireMsgs}

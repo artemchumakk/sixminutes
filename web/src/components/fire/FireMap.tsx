@@ -57,15 +57,20 @@ const FireMap = forwardRef<
   FireMapHandle,
   {
     accent: string;
+    homeStation?: string | null;
     onAnalysingChange?: (analysing: boolean) => void;
     onBusyChange?: (busy: boolean) => void;
     onMessagesChange?: (msgs: FireMsg[]) => void;
     onAudioStateChange?: (playing: boolean) => void;
   }
 >(function FireMap(
-  { accent, onAnalysingChange, onBusyChange, onMessagesChange, onAudioStateChange },
+  { accent, homeStation, onAnalysingChange, onBusyChange, onMessagesChange, onAudioStateChange },
   handleRef
 ) {
+  const homeRef = useRef<string | null | undefined>(homeStation);
+  useEffect(() => {
+    homeRef.current = homeStation;
+  }, [homeStation]);
   const divRef = useRef<HTMLDivElement>(null);
   const mapRef = useRef<L.Map | null>(null);
   const stationsRef = useRef<Record<string, L.CircleMarker>>({});
@@ -193,13 +198,19 @@ const FireMap = forwardRef<
   const paintStations = useCallback(() => {
     Object.entries(stationsRef.current).forEach(([name, m]) => {
       const isClosed = closedRef.current.has(name);
+      const isHome = homeRef.current === name;
       m.setStyle({
-        color: isClosed ? "#dc2626" : accent,
+        color: isClosed ? "#dc2626" : isHome ? "#171717" : accent,
+        weight: isHome ? 3 : 1.5,
         fillColor: isClosed ? "#dc2626" : accent,
-        fillOpacity: isClosed ? 0.85 : 0.5,
+        fillOpacity: isClosed ? 0.85 : isHome ? 0.75 : 0.5,
       });
     });
   }, [accent]);
+
+  useEffect(() => {
+    paintStations(); // re-ring when "my station" changes
+  }, [homeStation, paintStations]);
 
   const paintWards = useCallback((deltas: Record<string, number>) => {
     Object.values(wardsRef.current).forEach((p) =>
@@ -481,7 +492,7 @@ const FireMap = forwardRef<
         busCursor.current = tip.next;
         startBusPolling();
         const res = await askAgent(t, speak, {
-          station: stationRef.current?.name,
+          station: homeRef.current ?? stationRef.current?.name,
           closed: [...closedRef.current],
           hours: hoursRef.current,
         });

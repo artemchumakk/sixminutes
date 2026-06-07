@@ -1,5 +1,6 @@
-import { useState, type ReactNode } from "react";
+import { useEffect, useState, type ReactNode } from "react";
 import type { Workspace } from "../lib/types";
+import { fetchStations } from "../lib/api";
 import { cx } from "./ui/primitives";
 import {
   ChevronDown,
@@ -92,6 +93,8 @@ export default function Sidebar({
   onVoice,
   onExit,
   onQuickAsk,
+  myStation,
+  onSelectStation,
 }: {
   ws: Workspace;
   onNewChat: () => void;
@@ -99,9 +102,19 @@ export default function Sidebar({
   onVoice: () => void;
   onExit: () => void;
   onQuickAsk?: (text: string) => void;
+  myStation?: string | null;
+  onSelectStation?: (s: string | null) => void;
 }) {
   const [workspaces, setWorkspaces] = useState<WorkspaceFolderData[]>(INITIAL_WORKSPACES);
   const fire = ws.id === "fire";
+  const [stationNames, setStationNames] = useState<string[]>([]);
+  useEffect(() => {
+    if (fire && stationNames.length === 0) {
+      fetchStations()
+        .then((st) => setStationNames(st.map((s) => s.name).sort()))
+        .catch(() => undefined);
+    }
+  }, [fire, stationNames.length]);
 
   function addWorkspace() {
     const n = workspaces.filter((w) => w.name.startsWith("New workspace")).length + 1;
@@ -164,6 +177,32 @@ export default function Sidebar({
 
         {fire ? (
           <>
+            <Section>My station</Section>
+            <div className="px-0.5">
+              <select
+                value={myStation ?? ""}
+                onChange={(e) => onSelectStation?.(e.target.value || null)}
+                className={cx(
+                  "w-full appearance-none rounded-lg border px-2.5 py-2 text-[13px] outline-none transition-colors",
+                  myStation
+                    ? "border-neutral-300 bg-white font-medium text-neutral-900"
+                    : "border-dashed border-neutral-300 bg-neutral-50 text-neutral-500"
+                )}
+              >
+                <option value="">Select your station…</option>
+                {stationNames.map((n) => (
+                  <option key={n} value={n}>
+                    {n}
+                  </option>
+                ))}
+              </select>
+              {!myStation && (
+                <p className="mt-1.5 px-0.5 text-[11px] leading-4 text-neutral-400">
+                  personalises the analyses below — “my ground” means this station
+                </p>
+              )}
+            </div>
+
             {FIRE_ANALYSES.map((g) => (
               <div key={g.group}>
                 <Section>{g.group}</Section>

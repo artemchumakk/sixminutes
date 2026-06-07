@@ -13,6 +13,14 @@ export default function CodexApp({ ws, onExit }: { ws: Workspace; onExit: () => 
   const [view, setView] = useState<View>("chat");
   const [menuOpen, setMenuOpen] = useState(false);
   const askFn = useRef<((text: string) => void) | null>(null);
+  const [myStation, setMyStation] = useState<string | null>(
+    () => window.localStorage.getItem("warden.myStation") || null
+  );
+  const selectStation = (s: string | null) => {
+    setMyStation(s);
+    if (s) window.localStorage.setItem("warden.myStation", s);
+    else window.localStorage.removeItem("warden.myStation");
+  };
 
   function newChat() {
     setChatKey((k) => k + 1);
@@ -37,6 +45,8 @@ export default function CodexApp({ ws, onExit }: { ws: Workspace; onExit: () => 
           setView("chat");
           askFn.current?.(t);
         }}
+        myStation={myStation}
+        onSelectStation={selectStation}
       />
 
       <div className="relative flex min-w-0 flex-1 flex-col">
@@ -95,6 +105,7 @@ export default function CodexApp({ ws, onExit }: { ws: Workspace; onExit: () => 
               onRegisterAsk={(fn) => {
                 askFn.current = fn;
               }}
+              homeStation={myStation}
             />
           )}
         </main>
