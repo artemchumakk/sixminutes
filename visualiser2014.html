@@ -1,0 +1,339 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8"/>
+<meta name="viewport" content="width=device-width,initial-scale=1"/>
+<title>WARDEN — 2014</title>
+<link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"/>
+<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+<style>
+  :root{
+    --accent:#fb923c; --closed:#dc2626; --ours:#0d9488;
+    --ink:#171717; --ink2:#525252; --ink3:#a3a3a3;
+  }
+  *{box-sizing:border-box;margin:0;padding:0}
+  html,body{height:100%;overflow:hidden;background:#fff;
+    font-family:ui-sans-serif,system-ui,-apple-system,"Segoe UI",Roboto,Helvetica,Arial,sans-serif;
+    -webkit-font-smoothing:antialiased}
+  #map{position:absolute;inset:0;background:#f5f5f4}
+  .leaflet-container{font:inherit}
+
+  /* ward polygons animate */
+  .leaflet-overlay-pane path{transition:fill .9s ease,fill-opacity .9s ease,stroke .9s ease}
+
+  /* station labels */
+  .stn-label{background:rgba(255,255,255,.94);border:1px solid #e5e5e5;border-radius:8px;
+    padding:2px 8px;font-size:11.5px;font-weight:600;color:var(--ink);
+    box-shadow:0 2px 10px rgba(0,0,0,.08);white-space:nowrap}
+  .stn-label.red{color:var(--closed);border-color:#fecaca}
+  .stn-label.teal{color:var(--ours);border-color:#99f6e4}
+
+  /* ---------- cinematic chrome ---------- */
+  #title{position:absolute;inset:0;display:flex;flex-direction:column;align-items:center;
+    justify-content:center;gap:18px;z-index:900;pointer-events:none;
+    background:radial-gradient(ellipse at center,rgba(255,255,255,.92) 0%,rgba(255,255,255,.75) 60%,rgba(255,255,255,.35) 100%);
+    opacity:0;transition:opacity .8s ease}
+  #title.show{opacity:1}
+  #title .kicker{font-size:13px;font-weight:700;letter-spacing:.34em;color:var(--accent);text-transform:uppercase}
+  #title h1{font-size:clamp(40px,6.5vw,84px);font-weight:800;letter-spacing:-.03em;color:var(--ink);
+    text-align:center;line-height:1.02}
+  #title .sub{font-size:clamp(16px,1.8vw,22px);color:var(--ink2);font-weight:450;text-align:center;max-width:680px;line-height:1.45}
+
+  #lower{position:absolute;left:50%;bottom:42px;transform:translateX(-50%) translateY(24px);
+    z-index:900;pointer-events:none;opacity:0;transition:opacity .6s ease,transform .6s ease;
+    background:rgba(255,255,255,.96);border:1px solid #e7e5e4;border-radius:18px;
+    padding:16px 26px;max-width:760px;box-shadow:0 14px 50px rgba(0,0,0,.12)}
+  #lower.show{opacity:1;transform:translateX(-50%) translateY(0)}
+  #lower .kicker{font-size:11px;font-weight:700;letter-spacing:.26em;color:var(--accent);text-transform:uppercase;margin-bottom:5px}
+  #lower .kicker.red{color:var(--closed)} #lower .kicker.teal{color:var(--ours)}
+  #lower .line{font-size:17.5px;color:var(--ink);font-weight:500;line-height:1.45}
+  #lower .line b{font-weight:750}
+
+  #stats{position:absolute;top:36px;right:36px;z-index:900;display:flex;flex-direction:column;
+    gap:12px;pointer-events:none;width:300px}
+  .stat{background:rgba(255,255,255,.96);border:1px solid #e7e5e4;border-radius:16px;
+    padding:14px 18px;box-shadow:0 10px 36px rgba(0,0,0,.10);
+    opacity:0;transform:translateX(26px);transition:opacity .55s ease,transform .55s ease}
+  .stat.show{opacity:1;transform:translateX(0)}
+  .stat .label{font-size:11px;font-weight:650;letter-spacing:.14em;text-transform:uppercase;color:var(--ink3);margin-bottom:3px}
+  .stat .value{font-size:30px;font-weight:780;letter-spacing:-.02em;color:var(--ink);
+    font-variant-numeric:tabular-nums;line-height:1.1}
+  .stat .value.red{color:var(--closed)} .stat .value.teal{color:var(--ours)}
+  .stat .note{font-size:12px;color:var(--ink2);margin-top:3px;line-height:1.35}
+
+  #brand{position:absolute;top:36px;left:36px;z-index:900;display:flex;align-items:center;gap:10px;
+    pointer-events:none;opacity:0;transition:opacity .8s ease}
+  #brand.show{opacity:1}
+  #brand .mark{color:var(--accent);font-size:17px}
+  #brand .name{font-weight:800;letter-spacing:.18em;font-size:14px;color:var(--ink)}
+  #brand .tag{font-size:12px;color:var(--ink3);font-weight:500;margin-left:2px}
+
+  #verdict{position:absolute;inset:0;display:flex;flex-direction:column;align-items:center;justify-content:center;
+    gap:14px;z-index:880;pointer-events:none;opacity:0;transition:opacity .9s ease;
+    background:radial-gradient(ellipse at center,rgba(255,255,255,.9) 0%,rgba(255,255,255,.7) 55%,rgba(255,255,255,.25) 100%)}
+  #verdict.show{opacity:1}
+  #verdict .big{font-size:clamp(30px,4.6vw,58px);font-weight:800;letter-spacing:-.025em;color:var(--ink);text-align:center;line-height:1.12;max-width:900px}
+  #verdict .big em{font-style:normal;color:var(--ours)}
+  #verdict .small{font-size:16px;color:var(--ink2)}
+
+  .vignette{position:absolute;inset:0;pointer-events:none;z-index:850;
+    box-shadow:inset 0 0 220px rgba(23,23,23,.16)}
+</style>
+</head>
+<body>
+<div id="map"></div>
+<div class="vignette"></div>
+
+<div id="brand"><span class="mark">▲</span><span class="name">WARDEN</span><span class="tag">· the 2014 experiment</span></div>
+
+<div id="title">
+  <div class="kicker" id="t-kick">London · January 2014</div>
+  <h1 id="t-h1">Ten fire stations closed.</h1>
+  <div class="sub" id="t-sub">The Fifth London Safety Plan — the largest cut in the Brigade's modern history.</div>
+</div>
+
+<div id="lower"><div class="kicker" id="l-kick"></div><div class="line" id="l-line"></div></div>
+<div id="stats"></div>
+
+<div id="verdict">
+  <div class="big">Counting calls is easy.<br/><em>Coverage is a network.</em></div>
+  <div class="small">WARDEN — London's blue-light digital twin · built on 2.3M open records</div>
+</div>
+
+<script>
+const API = location.origin;
+const POLITICIANS = ["Clerkenwell","Westminster","Southwark","Belsize","Kingsland",
+                     "Knightsbridge","Downham","Woolwich","Bow","Silvertown"];
+const OURS = ["Dowgate","Millwall","Dockhead","New Cross","Chelsea",
+              "Shadwell","Islington","Lewisham","Stratford","East Ham"];
+
+// canonical, pre-verified numbers (sim = the twin's accounting; DiD = measured reality)
+const N = {
+  measured_s: 63, mean_s: 9.3,
+  actual_yr: 4049, ours_yr: 2762, factor: 1.47, naive_yr: 5290,
+};
+
+const map = L.map("map",{zoomControl:false,attributionControl:false,
+  scrollWheelZoom:false,doubleClickZoom:false,dragging:false,keyboard:false});
+L.tileLayer("https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}{r}.png",{maxZoom:19}).addTo(map);
+map.setView([51.5074,-0.118],11);
+map.createPane("wards"); map.getPane("wards").style.zIndex=410;
+map.createPane("stns");  map.getPane("stns").style.zIndex=620;
+
+// ---------------------------------------------------------------- state ----
+const S = { stations:{}, ghosts:{}, wards:{}, labels:[], timers:[],
+            heat:{actual:null, ours:null} };
+const norm = (x)=> (x||"").toUpperCase().trim();
+
+function clearTimers(){ S.timers.forEach(clearTimeout); S.timers=[]; }
+function later(fn,ms){ S.timers.push(setTimeout(fn,ms)); }
+
+// ---------------------------------------------------------------- load -----
+async function boot(){
+  const [stns, ghosts, geo] = await Promise.all([
+    fetch(API+"/stations").then(r=>r.json()),
+    fetch(API+"/stations2014").then(r=>r.json()),
+    fetch(API+"/wards_geo").then(r=>r.json()),
+  ]);
+  L.geoJSON(geo,{pane:"wards",
+    style:{color:"#d6d3d1",weight:.5,fillColor:"#fafaf9",fillOpacity:.35},
+    onEachFeature:(f,l)=>{ const k=norm(f.properties.WD22NM||f.properties.name);
+      if(k) S.wards[k]=l; }
+  }).addTo(map);
+  stns.forEach(s=>{
+    S.stations[s.name]=L.circleMarker([s.lat,s.lon],{pane:"stns",radius:4.5,
+      weight:1.5,color:"#fb923c",fillColor:"#fb923c",fillOpacity:.45,opacity:.75}).addTo(map);
+  });
+  ghosts.forEach(s=>{
+    S.ghosts[s.name]=L.circleMarker([s.lat,s.lon],{pane:"stns",radius:5,
+      weight:1.5,color:"#a78bfa",fillColor:"#a78bfa",fillOpacity:.45,opacity:.8}).addTo(map);
+  });
+  // warm the two real scenario runs in the background (ward heat = live model output)
+  warm("actual", POLITICIANS); warm("ours", OURS);
+  applyBeat(0);
+}
+async function warm(key, names){
+  try{
+    const r = await fetch(API+"/scenario",{method:"POST",
+      headers:{"content-type":"application/json"},
+      body:JSON.stringify({close:names,open:[],pump_delta:{},baseline:"pre2014"})});
+    if(r.ok) S.heat[key]=(await r.json()).ward_deltas||{};
+  }catch(e){ /* fallback: radial pulses only */ }
+}
+
+// ------------------------------------------------------------- painters ----
+function paintHeat(deltas){
+  Object.values(S.wards).forEach(p=>p.setStyle({fillColor:"#fafaf9",fillOpacity:.35,color:"#d6d3d1"}));
+  if(!deltas) return;
+  Object.entries(deltas).forEach(([w,d])=>{
+    const p=S.wards[norm(w)]; if(!p||d<3) return;
+    p.setStyle({fillColor: d>60?"#dc2626":d>20?"#f97316":"#facc15",
+                fillOpacity: Math.min(.62,.18+d/140), color:"#e7e5e4"});
+  });
+}
+function clearHeat(){ paintHeat(null); }
+
+function setStations(mode){
+  // mode: calm | redset | roulette-base | dual
+  Object.entries(S.stations).forEach(([n,m])=>{
+    const ours = OURS.includes(n);
+    if(mode==="dual" && ours)
+      m.setStyle({color:"#0d9488",fillColor:"#0d9488",fillOpacity:.9,opacity:1,radius:7,weight:2.5});
+    else
+      m.setStyle({color:"#fb923c",fillColor:"#fb923c",fillOpacity:.4,opacity:.65,radius:4.5,weight:1.5});
+  });
+  Object.entries(S.ghosts).forEach(([n,m])=>{
+    if(mode==="redset"||mode==="dual")
+      m.setStyle({color:"#dc2626",fillColor:"#dc2626",fillOpacity:.92,opacity:1,radius:7.5,weight:2.5});
+    else
+      m.setStyle({color:"#a78bfa",fillColor:"#a78bfa",fillOpacity:.45,opacity:.8,radius:5,weight:1.5});
+  });
+}
+function pulse(marker, color){
+  const c=L.circleMarker(marker.getLatLng(),{pane:"stns",radius:8,weight:2.4,
+    color,fillOpacity:0,opacity:.85}).addTo(map);
+  let r=8,o=.85;
+  const iv=setInterval(()=>{ r+=2.6; o-=.05;
+    if(o<=0){ clearInterval(iv); map.removeLayer(c); return; }
+    c.setRadius(r); c.setStyle({opacity:o}); },36);
+}
+function label(marker,text,cls){
+  const t=L.tooltip({permanent:true,direction:"top",offset:[0,-10],
+    className:"stn-label "+(cls||"")}).setContent(text).setLatLng(marker.getLatLng()).addTo(map);
+  S.labels.push(t); return t;
+}
+function clearLabels(){ S.labels.forEach(l=>map.removeLayer(l)); S.labels=[]; }
+
+// ------------------------------------------------------------- chrome ------
+const $=(id)=>document.getElementById(id);
+function title(show,kick,h1,sub){
+  if(kick!==undefined){$("t-kick").textContent=kick;$("t-h1").innerHTML=h1;$("t-sub").innerHTML=sub;}
+  $("title").classList.toggle("show",show);
+}
+function lower(show,kick,line,cls){
+  if(line!==undefined){ $("l-kick").textContent=kick; $("l-kick").className="kicker "+(cls||"");
+    $("l-line").innerHTML=line; }
+  $("lower").classList.toggle("show",show);
+}
+function stats(items){ // [{label,value,note,cls,countTo,suffix,prefix,decimals}]
+  const box=$("stats"); box.innerHTML="";
+  (items||[]).forEach((it,i)=>{
+    const d=document.createElement("div"); d.className="stat";
+    d.innerHTML=`<div class="label">${it.label}</div>
+      <div class="value ${it.cls||""}" id="sv${i}">${it.prefix||""}0${it.suffix||""}</div>
+      <div class="note">${it.note||""}</div>`;
+    box.appendChild(d);
+    later(()=>{ d.classList.add("show"); countUp($("sv"+i),it); }, 250+i*450);
+  });
+}
+function countUp(el,it){
+  const t0=performance.now(), dur=1300, from=0, to=it.countTo;
+  function tick(t){
+    const k=Math.min(1,(t-t0)/dur), e=1-Math.pow(1-k,3);
+    const v=from+(to-from)*e;
+    el.textContent=(it.prefix||"")+(it.decimals?v.toFixed(it.decimals):Math.round(v).toLocaleString())+(it.suffix||"");
+    if(k<1) requestAnimationFrame(tick);
+  }
+  requestAnimationFrame(tick);
+}
+function verdict(show){ $("verdict").classList.toggle("show",show); }
+
+// --------------------------------------------------------------- beats -----
+let rouletteIv=null;
+function stopRoulette(){ if(rouletteIv){clearInterval(rouletteIv);rouletteIv=null;} }
+
+const BEATS = [
+// 0 — TITLE
+()=>{ title(true,"London · January 2014","Ten fire stations closed.",
+        "The Fifth London Safety Plan — the largest cut in the Brigade's modern history.");
+      lower(false); stats([]); verdict(false); $("brand").classList.remove("show");
+      clearLabels(); clearHeat(); setStations("calm");
+      map.flyTo([51.5074,-0.118],11,{duration:1.6}); },
+
+// 1 — THE TEN
+()=>{ title(false); verdict(false); stats([]); $("brand").classList.add("show");
+      clearLabels(); clearHeat(); setStations("calm");
+      map.flyTo([51.5135,-0.085],12,{duration:1.8});
+      const order=["Clerkenwell","Westminster","Southwark","Knightsbridge","Belsize",
+                   "Kingsland","Bow","Silvertown","Woolwich","Downham"];
+      order.forEach((n,i)=> later(()=>{ const m=S.ghosts[n]; if(!m) return;
+        m.setStyle({color:"#dc2626",fillColor:"#dc2626",fillOpacity:.92,opacity:1,radius:7.5,weight:2.5});
+        pulse(m,"#dc2626"); label(m,n,"red");
+      }, 600+i*330));
+      lower(true,"The decision","<b>Ten stations closed.</b> Clerkenwell — London's oldest, 1872 — Westminster, Southwark, Knightsbridge… chosen largely by how quiet they looked on paper.","red"); },
+
+// 2 — THE IMPACT
+()=>{ title(false); verdict(false); clearLabels(); setStations("redset"); stopRoulette();
+      map.flyTo([51.5074,-0.105],11,{duration:1.8});
+      later(()=>paintHeat(S.heat.actual),900);
+      stats([
+        {label:"Measured · their grounds",value:"",countTo:N.measured_s,prefix:"+",suffix:"s",cls:"red",
+         note:"real attendance slowdown, one year on (difference-in-differences)"},
+        {label:"Broken 6-minute promises",value:"",countTo:N.actual_yr,suffix:" / yr",cls:"red",
+         note:"the twin's accounting of the politicians' ten"},
+        {label:"City-wide mean response",value:"",countTo:N.mean_s,prefix:"+",suffix:"s",decimals:1,
+         note:"every call in London, every day"},
+      ]);
+      lower(true,"One year later","The wound is in the data: their old grounds answered <b>a minute slower</b>. London never got that minute back.","red"); },
+
+// 3 — THE QUESTION
+()=>{ verdict(false); stats([]); lower(false); clearLabels(); stopRoulette();
+      later(()=>{ clearHeat(); setStations("redset"); },300);
+      title(true,"The question","Same ten closures.<br/>Could London have lost less?",
+        "WARDEN replays a full year of London — 132,860 incidents — in three seconds. So we asked it.");
+      map.flyTo([51.5074,-0.118],11,{duration:1.6}); },
+
+// 4 — THE SEARCH
+()=>{ title(false); verdict(false); stats([]); clearLabels(); clearHeat(); setStations("calm");
+      map.flyTo([51.5074,-0.105],11.3,{duration:1.6});
+      const names=Object.keys(S.stations); let spins=0;
+      stopRoulette();
+      rouletteIv=setInterval(()=>{ // the optimizer "considering" candidates
+        spins++;
+        names.forEach(n=>S.stations[n].setStyle({fillOpacity:.4,radius:4.5,weight:1.5,color:"#fb923c",fillColor:"#fb923c"}));
+        for(let i=0;i<10;i++){ const n=names[(Math.random()*names.length)|0];
+          S.stations[n].setStyle({fillOpacity:.95,radius:6.5,color:"#0d9488",fillColor:"#0d9488"}); }
+        if(spins>26){ stopRoulette(); setStations("calm");
+          OURS.forEach((n,i)=> later(()=>{ const m=S.stations[n]; if(!m) return;
+            m.setStyle({color:"#0d9488",fillColor:"#0d9488",fillOpacity:.92,opacity:1,radius:7,weight:2.5});
+            pulse(m,"#0d9488"); label(m,n,"teal"); },i*280));
+        }
+      },95);
+      lower(true,"The optimizer","Set-aware search — closures <b>interact</b>, so it scores whole networks, not stations. <b>300 simulated years</b> of London later…","teal"); },
+
+// 5 — THE RESULT
+()=>{ title(false); verdict(false); clearLabels(); stopRoulette(); setStations("dual");
+      Object.values(S.ghosts).forEach(m=>m.setStyle({fillOpacity:.35,opacity:.5,radius:5.5}));
+      map.flyTo([51.5074,-0.105],11,{duration:1.8});
+      later(()=>paintHeat(S.heat.ours),900);
+      stats([
+        {label:"Broken promises · our ten",value:"",countTo:N.ours_yr,suffix:" / yr",cls:"teal",
+         note:`vs ${N.actual_yr.toLocaleString()} — same number of closures`},
+        {label:"Less harm",value:"",countTo:N.factor,prefix:"×",decimals:2,cls:"teal",
+         note:"a third of the damage, for free"},
+        {label:"Overlap with the 2014 ten",value:"",countTo:0,suffix:" / 10",
+         note:"not one station in common"},
+      ]);
+      lower(true,"The result","Ten different closures — <b>a visibly cooler London</b>. 1,287 promises a year kept instead of broken, with the same budget.","teal"); },
+
+// 6 — THE VERDICT
+()=>{ title(false); stats([]); lower(false); clearLabels(); stopRoulette(); setStations("dual");
+      later(()=>clearHeat(),400);
+      map.flyTo([51.5074,-0.118],10.8,{duration:2.2});
+      verdict(true); },
+];
+
+let beat=-1;
+function applyBeat(n){
+  if(n<0||n>=BEATS.length||n===beat) return;
+  beat=n; clearTimers(); BEATS[n]();
+}
+addEventListener("keydown",(e)=>{
+  if(e.key==="ArrowRight"||e.key===" ") applyBeat(beat+1);
+  else if(e.key==="ArrowLeft") applyBeat(beat-1);
+});
+
+boot();
+</script>
+</body>
+</html>

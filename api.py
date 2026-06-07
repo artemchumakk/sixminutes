@@ -103,6 +103,13 @@ def index():
     return FileResponse(Path(__file__).parent / "dashboard.html")
 
 
+@app.get("/2014")
+def visualiser_2014():
+    """The 2014 experiment film — arrow-stepped, standalone (not part of the app UI)."""
+    from fastapi.responses import FileResponse
+    return FileResponse(Path(__file__).parent / "visualiser2014.html")
+
+
 def _to_wgs(E, N):
     from pyproj import Transformer
     t = Transformer.from_crs(27700, 4326, always_xy=True)
