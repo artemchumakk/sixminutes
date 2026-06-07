@@ -30,4 +30,8 @@ data/processed/geo/*
 !data/processed/police_stations.parquet
 !data/processed/police_damage.parquet
 !data/processed/police_response_anchors.parquet
+!data/processed/police_bcu.parquet
 !data/processed/geo/police_*.geojson
+
+# runtime logs — never commit
+logs_police/

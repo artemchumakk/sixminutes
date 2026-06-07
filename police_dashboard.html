@@ -1,0 +1,404 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8"/>
+<title>SIXMINUTES · Police — London Crime-Demand Twin</title>
+<meta name="viewport" content="width=device-width, initial-scale=1"/>
+<link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"/>
+<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+<style>
+  :root { --bg:#0b0e13; --panel:#11161f; --line:#1f2733; --txt:#dbe4f0; --dim:#7d8aa0;
+          --red:#ff4d4d; --amber:#ffb84d; --yellow:#ffe44d; --green:#62d96b; --blue:#4dc3ff; }
+  * { box-sizing:border-box; margin:0; }
+  body { background:var(--bg); color:var(--txt); font:14px/1.45 "SF Mono", ui-monospace, Menlo, monospace; height:100vh; display:flex; flex-direction:column; }
+  header { padding:10px 16px; border-bottom:1px solid var(--line); display:flex; gap:14px; align-items:baseline; }
+  header h1 { font-size:18px; letter-spacing:2px; }
+  header h1 b { color:var(--blue); }
+  header .promise { color:var(--dim); font-size:12px; }
+  .badge { font-size:10px; padding:2px 7px; border-radius:9px; border:1px solid var(--line); color:var(--dim); }
+  .badge.b { color:var(--blue); border-color:var(--blue); }
+  main { flex:1; display:flex; min-height:0; }
+  #map { flex:1; }
+  aside { width:380px; border-left:1px solid var(--line); background:var(--panel); padding:14px; overflow-y:auto; display:flex; flex-direction:column; gap:12px; }
+  h2 { font-size:11px; letter-spacing:1.5px; color:var(--dim); text-transform:uppercase; margin-bottom:6px; }
+  .card { background:var(--bg); border:1px solid var(--line); border-radius:8px; padding:10px; }
+  .row { display:flex; gap:8px; align-items:center; }
+  select, input { flex:1; background:var(--panel); color:var(--txt); border:1px solid var(--line); border-radius:6px; padding:6px; font:inherit; min-width:0; }
+  #q::placeholder { color:var(--dim); }
+  #radius { flex:0 0 auto; }
+  input[type=range] { padding:0; border:0; background:transparent; accent-color:var(--blue); cursor:pointer; }
+  .fc { display:flex; align-items:center; gap:7px; padding:3px 0; font-size:12.5px; }
+  .fc .nm { width:58px; color:var(--txt); }
+  .fc .bar { flex:1; height:8px; background:var(--line); border-radius:4px; overflow:hidden; }
+  .fc .bar i { display:block; height:100%; background:var(--blue); }
+  .fc .vv { width:104px; text-align:right; color:var(--dim); white-space:nowrap; }
+  .up { color:var(--red); } .down { color:var(--green); }
+  .toggle { background:var(--panel); color:var(--dim); border:1px solid var(--line); border-radius:6px; padding:6px 8px; cursor:pointer; font:inherit; font-size:12px; white-space:nowrap; }
+  .toggle.on { color:var(--blue); border-color:var(--blue); }
+  .chips { display:flex; flex-wrap:wrap; gap:6px; min-height:26px; margin-top:8px; }
+  .chip { background:#2a1216; border:1px solid var(--red); color:var(--red); border-radius:12px; padding:2px 10px; cursor:pointer; font-size:12px; }
+  button#run { width:100%; padding:10px; margin-top:8px; background:var(--blue); border:0; border-radius:8px; color:#04121c; font:inherit; font-weight:700; letter-spacing:1px; cursor:pointer; }
+  button#run:disabled { opacity:.45; cursor:wait; }
+  .stat { display:flex; justify-content:space-between; padding:3px 0; border-bottom:1px dashed var(--line); }
+  .stat b { color:var(--amber); }
+  .stat b.big { color:var(--red); font-size:15px; }
+  .ward { display:flex; justify-content:space-between; font-size:12.5px; padding:2px 0; gap:8px; }
+  .ward span { color:var(--txt); overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+  .ward small { color:var(--dim); }
+  .ward b { color:var(--red); white-space:nowrap; }
+  .hint { color:var(--dim); font-size:12px; }
+  .legend { display:flex; gap:10px; font-size:11px; color:var(--dim); margin-top:6px; flex-wrap:wrap; }
+  .legend i { display:inline-block; width:10px; height:10px; border-radius:50%; margin-right:3px; vertical-align:-1px; }
+  #validation { font-size:11.5px; white-space:pre-wrap; color:var(--dim); max-height:230px; overflow-y:auto; }
+  .leaflet-container { background:#0b0e13; }
+</style>
+</head>
+<body>
+<header>
+  <h1>SIXMINUTES <b>· POLICE</b></h1>
+  <span class="promise">London's I-grade promise: an officer on scene within 15 minutes. This is where that promise breaks.</span>
+  <span style="flex:1"></span>
+  <span class="badge">FIRE · TIER A</span>
+  <span class="badge b">POLICE · TIER B (demand validated 0.94)</span>
+  <span class="badge">AMBULANCE · TIER B−</span>
+</header>
+<main>
+  <div id="map"></div>
+  <aside>
+    <div class="card">
+      <h2>Scenario — click stations to close</h2>
+      <div class="row">
+        <select id="cat" onchange="changeCategory()"></select>
+        <button class="toggle on" id="demandToggle" onclick="toggleDemand()">demand</button>
+        <button class="toggle on" id="dmgToggle" onclick="toggleDamage()">damage</button>
+      </div>
+      <div class="chips" id="chips"><span class="hint">no stations selected</span></div>
+      <button id="run" onclick="runScenario()">RUN COUNTERFACTUAL</button>
+      <div class="legend">
+        <span><i style="background:#ff4d4d"></i>&gt;300s</span>
+        <span><i style="background:#ffb84d"></i>&gt;120s</span>
+        <span><i style="background:#ffe44d"></i>&gt;30s</span>
+        <span><i style="background:#4dc3ff"></i>station</span>
+        <span><i style="border:2px solid var(--dim);background:transparent"></i>ring = closure criticality</span>
+      </div>
+    </div>
+    <div class="card">
+      <h2>Crime forecast — search or click the map</h2>
+      <div class="row">
+        <input id="q" placeholder="area — e.g. Croydon, Soho, Brixton"/>
+        <select id="radius" title="search radius">
+          <option value="1">1 km</option>
+          <option value="2" selected>2 km</option>
+          <option value="3">3 km</option>
+          <option value="5">5 km</option>
+        </select>
+        <button class="toggle on" id="goPredict" onclick="searchArea()">go</button>
+      </div>
+      <div id="predict"><span class="hint">type an area &amp; hit enter, or click anywhere on the map</span></div>
+    </div>
+    <div class="card">
+      <h2>Optimal deployment — match units to crime</h2>
+      <div class="row">
+        <input type="range" id="units" min="100" max="1500" step="50" value="600" autocomplete="off"/>
+        <button class="toggle" id="deployToggle" onclick="toggleDeploy()">show</button>
+      </div>
+      <div class="hint" id="unitsLabel"><b id="unitsN" style="color:var(--blue)">600</b> units · Met fleet ≈5,200 (published); on-shift response subset not public</div>
+      <div id="deploy"></div>
+    </div>
+    <div class="card" id="result" style="display:none">
+      <h2>Closure impact <span id="elapsed" style="text-transform:none"></span></h2>
+      <div class="stat"><span>violent crimes/mo pushed past 15 min</span><b class="big" id="r-pushed">—</b></div>
+      <div class="stat"><span>cells pushed past target</span><b id="r-cells">—</b></div>
+      <div class="stat"><span>city mean added (crime-weighted)</span><b id="r-mean">—</b></div>
+      <div class="stat"><span>city p90 added</span><b id="r-p90">—</b></div>
+      <div style="height:8px"></div>
+      <h2>Worst cells (crime-weighted harm)</h2>
+      <div id="r-wards"></div>
+    </div>
+    <div class="card">
+      <h2>Tier-B trust — what's validated vs anchored</h2>
+      <div id="validation">loading…</div>
+    </div>
+    <div class="card">
+      <h2>Engine</h2>
+      <div class="stat"><span>demand surface</span><b id="e-cells">— cells</b></div>
+      <div class="stat"><span>estate</span><b id="e-stn">— stations</b></div>
+      <div class="stat"><span>anchored mean response</span><b id="e-mean">—</b></div>
+      <div class="stat"><span>I-grade target</span><b>900s (15 min)</b></div>
+      <div class="stat"><span>physics</span><b>transferred (fire XGBoost)</b></div>
+      <div class="stat"><span>brain</span><b>Nemotron (local/Nebius)</b></div>
+    </div>
+  </aside>
+</main>
+<script>
+const API = location.origin.includes("file") ? "http://localhost:8096" : location.origin;
+const map = L.map("map", { zoomControl:false }).setView([51.505, -0.09], 11);
+window.map = map;  // console/debug handle
+L.tileLayer("https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png",
+  { attribution:"© OSM © CARTO", maxZoom:18 }).addTo(map);
+
+const closed = new Set();
+let category = "all", showDemand = true, showDamage = true;
+let damageByName = {};
+const stationLayer = {};
+const demandLayer = L.layerGroup().addTo(map);
+const damageLayer = L.layerGroup().addTo(map);
+const deltaLayer  = L.layerGroup().addTo(map);
+const predictLayer = L.layerGroup().addTo(map);
+let lastPredict = null;
+
+// ---- crime demand heatmap -------------------------------------------------
+function demandColor(w) { return w >= 40 ? "#ff4d4d" : w >= 12 ? "#ffb84d" : "#ffe44d"; }
+function drawDemand(cells) {
+  demandLayer.clearLayers();
+  if (!showDemand) return;
+  cells.forEach(c => {
+    L.circleMarker([c.lat, c.lon], {
+      radius: Math.min(13, 2 + Math.sqrt(c.weight)), weight:0,
+      fillColor: demandColor(c.weight), fillOpacity:.28
+    }).bindTooltip(`${c.cell}: ${c.weight}/mo`).addTo(demandLayer);
+  });
+}
+function loadDemand() {
+  fetch(`${API}/cells?category=${category}`).then(r => r.json()).then(drawDemand).catch(()=>{});
+}
+function toggleDemand() {
+  showDemand = !showDemand;
+  document.getElementById("demandToggle").classList.toggle("on", showDemand);
+  loadDemand();
+}
+function changeCategory() {
+  category = document.getElementById("cat").value;
+  loadDemand();
+}
+
+// ---- closure criticality (per-station damage) -----------------------------
+function damageColor(d) { return d > 300 ? "#ff4d4d" : d > 150 ? "#ffb84d" : d > 50 ? "#ffe44d" : "#5a6b86"; }
+function stationTip(s) {
+  const d = damageByName[s.name];
+  return d ? `${s.name} · ${s.kind}<br>close → +${Math.round(d.mean_added_s)}s local · ${d.pushed_over_target}/mo past 15 min`
+           : `${s.name} · ${s.kind}`;
+}
+function drawDamage(fc) {
+  damageLayer.clearLayers();
+  if (!showDamage) return;
+  (fc.features || []).forEach(f => {
+    const d = f.properties, lon = f.geometry.coordinates[0], lat = f.geometry.coordinates[1];
+    if (!(d.mean_added_s > 0)) return;
+    L.circleMarker([lat, lon], { radius: Math.min(28, 5 + d.mean_added_s / 15),
+      weight:2, color: damageColor(d.mean_added_s), fillColor: damageColor(d.mean_added_s),
+      fillOpacity:.05, interactive:false }).addTo(damageLayer);
+  });
+}
+function loadDamage() {
+  fetch(API + "/damage").then(r => r.json()).then(fc => {
+    (fc.features || []).forEach(f => { damageByName[f.properties.station] = f.properties; });
+    drawDamage(fc);
+    Object.values(stationLayer).forEach(m => { if (m._s) m.setTooltipContent(stationTip(m._s)); });
+  }).catch(() => {});
+}
+function toggleDamage() {
+  showDamage = !showDamage;
+  document.getElementById("dmgToggle").classList.toggle("on", showDamage);
+  if (showDamage) { damageLayer.addTo(map); loadDamage(); }
+  else { map.removeLayer(damageLayer); damageLayer.clearLayers(); }
+}
+
+// ---- area crime forecast (search / map-click) -----------------------------
+function trendArrow(p) {
+  return p > 1.5 ? `<span class="up">▲${p.toFixed(0)}%</span>`
+       : p < -1.5 ? `<span class="down">▼${Math.abs(p).toFixed(0)}%</span>`
+       : `<span class="hint">~flat</span>`;
+}
+function searchArea() {
+  const q = document.getElementById("q").value.trim();
+  if (!q) return;
+  const box = document.getElementById("predict");
+  box.innerHTML = '<span class="hint">finding “' + q + '”…</span>';
+  const url = "https://nominatim.openstreetmap.org/search?format=json&limit=1&countrycodes=gb"
+    + "&viewbox=-0.55,51.72,0.34,51.25&bounded=1&q=" + encodeURIComponent(q + ", London");
+  fetch(url, { headers:{ "Accept":"application/json" } }).then(r => r.json()).then(j => {
+    if (!j.length) { box.innerHTML = '<span class="hint">no match in London for “' + q + '”</span>'; return; }
+    const lat = +j[0].lat, lon = +j[0].lon;
+    map.setView([lat, lon], 13);
+    runPredict(lat, lon, j[0].display_name.split(",")[0]);
+  }).catch(() => { box.innerHTML = '<span class="hint">geocoder unavailable — click the map instead</span>'; });
+}
+function runPredict(lat, lon, label) {
+  const radius = +document.getElementById("radius").value || 2;
+  lastPredict = { lat, lon, label };
+  predictLayer.clearLayers();
+  L.circle([lat, lon], { radius: radius*1000, color:"#4dc3ff", weight:1.5,
+    fillColor:"#4dc3ff", fillOpacity:.06, interactive:false }).addTo(predictLayer);
+  L.circleMarker([lat, lon], { radius:5, color:"#fff", weight:2,
+    fillColor:"#4dc3ff", fillOpacity:1, interactive:false }).addTo(predictLayer);
+  document.getElementById("predict").innerHTML = '<span class="hint">forecasting…</span>';
+  fetch(`${API}/predict?lat=${lat}&lon=${lon}&radius_km=${radius}`)
+    .then(r => r.json()).then(p => renderPredict(p, label))
+    .catch(() => { document.getElementById("predict").innerHTML = '<span class="hint">forecast failed</span>'; });
+}
+function renderPredict(p, label) {
+  if (!p.categories || !p.categories.length) {
+    document.getElementById("predict").innerHTML =
+      '<span class="hint">no recorded crime in this radius — try a larger radius or move the pin</span>';
+    return;
+  }
+  const top = p.categories[0].now_per_mo || 1;
+  const head =
+      `<div class="stat"><span>${label || "selected area"} · ${p.radius_km}km · ${p.cells} cells</span></div>`
+    + `<div class="stat"><span>crimes on record · 36 mo</span><b>${p.sample_incidents_36mo.toLocaleString()}</b></div>`
+    + `<div class="stat"><span>now → projected next month</span><b class="big">${Math.round(p.total_now_per_mo)} → ${Math.round(p.total_proj_next_mo)}/mo</b></div>`
+    + `<div style="height:6px"></div>`;
+  const rows = p.categories.map(c => {
+    const w = Math.max(3, 100 * c.now_per_mo / top);
+    return `<div class="fc"><span class="nm">${c.category}</span>`
+      + `<span class="bar"><i style="width:${w}%"></i></span>`
+      + `<span class="vv">${Math.round(c.now_per_mo)}/mo ${trendArrow(c.trend_3y_pct)}</span></div>`;
+  }).join("");
+  document.getElementById("predict").innerHTML = head + rows
+    + `<div class="hint" style="margin-top:6px">▲▼ = 3-yr trend (Y1→Y3); next-month projection damps that trend. Tier-B — extrapolation, not a validated predictor.</div>`;
+}
+map.on("click", e => runPredict(e.latlng.lat, e.latlng.lng, null));
+document.getElementById("q").addEventListener("keydown", e => { if (e.key === "Enter") searchArea(); });
+document.getElementById("radius").addEventListener("change", () => {
+  if (lastPredict) runPredict(lastPredict.lat, lastPredict.lon, lastPredict.label);
+});
+
+// ---- optimal deployment (demand-matched units) ----------------------------
+let showDeploy = false;
+const deployLayer = L.layerGroup();
+function deployColor(d) { return d > 0.5 ? "#ff4d4d" : d < -0.5 ? "#4dc3ff" : "#5a6b86"; }
+function drawDeploy(a) {
+  deployLayer.clearLayers();
+  a.stations.forEach(s => {
+    const d = s.delta;
+    L.circleMarker([s.lat, s.lon], { radius: Math.min(22, 4 + Math.abs(d) * 1.6),
+      weight:1.5, color:"#0b0e13", fillColor: deployColor(d), fillOpacity:.85,
+      bubblingMouseEvents:false })
+      .bindTooltip(`${s.name}<br>demand ${Math.round(s.demand_per_mo)}/mo · ${Math.round(s.cur_workload)} crimes/unit now<br>${d >= 0 ? "+" : ""}${d.toFixed(1)} units (${s.cur_units} → ${s.opt_units})`)
+      .addTo(deployLayer);
+  });
+}
+function renderDeploy(a) {
+  const under = a.under_resourced.map(r =>
+    `<div class="ward"><span>${r.name}<br><small>${Math.round(r.demand_per_mo)}/mo · ${Math.round(r.cur_workload)} crimes/unit</small></span><b style="color:#ff4d4d">+${r.add}</b></div>`).join("");
+  const over = a.over_resourced.map(r =>
+    `<div class="ward"><span>${r.name}<br><small>${Math.round(r.demand_per_mo)}/mo · ${Math.round(r.cur_workload)} crimes/unit</small></span><b style="color:#4dc3ff">−${r.spare}</b></div>`).join("");
+  document.getElementById("deploy").innerHTML =
+      `<div class="stat"><span>workload imbalance today</span><b class="big">${a.imbalance_now}×</b></div>`
+    + `<div class="stat"><span>busiest catchment now</span><b>${Math.round(a.worst_workload_now).toLocaleString()} crimes/unit</b></div>`
+    + `<div class="stat"><span>demand-matched (all catchments)</span><b>${Math.round(a.workload_balanced).toLocaleString()} crimes/unit</b></div>`
+    + `<div style="height:8px"></div><h2 style="color:#ff4d4d">needs more — starved hotspots</h2>${under}`
+    + `<div style="height:8px"></div><h2 style="color:#4dc3ff">can spare — low-crime cover</h2>${over}`
+    + `<div class="hint" style="margin-top:6px">red = under-resourced, blue = over-resourced. ‘now’ = estate-even spread (actual per-station fleet isn't public); demand-weighting equalises crimes/unit. Tier-B model.</div>`;
+}
+function loadDeploy() {
+  const units = +document.getElementById("units").value;
+  fetch(`${API}/allocation?units=${units}`).then(r => r.json())
+    .then(a => { drawDeploy(a); renderDeploy(a); }).catch(() => {});
+}
+function toggleDeploy() {
+  showDeploy = !showDeploy;
+  const btn = document.getElementById("deployToggle");
+  btn.classList.toggle("on", showDeploy);
+  btn.textContent = showDeploy ? "hide" : "show";
+  if (showDeploy) {
+    deployLayer.addTo(map);
+    map.removeLayer(demandLayer); map.removeLayer(damageLayer);   // declutter
+    loadDeploy();
+  } else {
+    map.removeLayer(deployLayer); deployLayer.clearLayers();
+    document.getElementById("deploy").innerHTML = "";
+    if (showDemand) demandLayer.addTo(map);
+    if (showDamage) damageLayer.addTo(map);
+  }
+}
+let _depT;
+document.getElementById("units").addEventListener("input", function () {
+  document.getElementById("unitsN").textContent = this.value;
+  if (showDeploy) { clearTimeout(_depT); _depT = setTimeout(loadDeploy, 160); }
+});
+
+// ---- stations -------------------------------------------------------------
+function chips() {
+  const el = document.getElementById("chips");
+  el.innerHTML = closed.size ? "" : '<span class="hint">no stations selected</span>';
+  closed.forEach(n => {
+    const c = document.createElement("span");
+    c.className = "chip"; c.textContent = n + " ✕";
+    c.onclick = () => { closed.delete(n); paintStations(); chips(); };
+    el.appendChild(c);
+  });
+}
+function paintStations() {
+  Object.entries(stationLayer).forEach(([n, m]) =>
+    m.setStyle({ color: closed.has(n) ? "#ff4d4d" : "#4dc3ff",
+                 fillColor: closed.has(n) ? "#ff4d4d" : "#4dc3ff" }));
+}
+
+fetch(API + "/stations").then(r => r.json()).then(st => {
+  st.forEach(s => {
+    const r = s.kind === "front_counter" ? 4 : 6;
+    const m = L.circleMarker([s.lat, s.lon], { radius:r, weight:1.5, bubblingMouseEvents:false,
+      color:"#4dc3ff", fillColor:"#4dc3ff", fillOpacity:.55 }).addTo(map);
+    m._s = s;
+    m.bindTooltip(stationTip(s));
+    m.on("click", () => { closed.has(s.name) ? closed.delete(s.name) : closed.add(s.name);
+                          paintStations(); chips(); });
+    stationLayer[s.name] = m;
+  });
+});
+
+loadDamage();
+
+fetch(API + "/categories").then(r => r.json()).then(cats => {
+  const sel = document.getElementById("cat");
+  cats.forEach(c => { const o = document.createElement("option"); o.value=c; o.textContent=c; sel.appendChild(o); });
+  sel.value = "all"; loadDemand();
+}).catch(loadDemand);
+
+fetch(API + "/validation").then(r => r.json()).then(v => {
+  document.getElementById("validation").textContent =
+    v.markdown.replace(/[#>|*`]/g, "").replace(/\n{2,}/g, "\n").trim();
+}).catch(() => {});
+
+fetch(API + "/baseline").then(r => r.json()).then(b => {
+  document.getElementById("e-cells").textContent = b.cells.toLocaleString() + " cells";
+  document.getElementById("e-stn").textContent = b.stations + " stations";
+  document.getElementById("e-mean").textContent = Math.round(b.mean_response_s) + "s";
+}).catch(() => {});
+
+// ---- counterfactual -------------------------------------------------------
+function deltaColor(d) { return d > 300 ? "#ff4d4d" : d > 120 ? "#ffb84d" : "#ffe44d"; }
+async function runScenario() {
+  const btn = document.getElementById("run");
+  btn.disabled = true; btn.textContent = "REROUTING THE CITY…";
+  try {
+    const res = await fetch(API + "/scenario", { method:"POST",
+      headers:{ "Content-Type":"application/json" },
+      body: JSON.stringify({ close:[...closed], category }) }).then(r => r.json());
+    document.getElementById("result").style.display = "block";
+    document.getElementById("elapsed").textContent = "· " + (res.elapsed_s*1000).toFixed(0) + "ms · " + category;
+    document.getElementById("r-pushed").textContent = "+" + res.city.crimes_pushed_over_target + "/mo";
+    document.getElementById("r-cells").textContent = res.city.cells_pushed_over_target;
+    document.getElementById("r-mean").textContent = "+" + res.city.mean_delta_s + "s";
+    document.getElementById("r-p90").textContent = "+" + res.city.p90_delta_s + "s";
+    document.getElementById("r-wards").innerHTML = res.worst_cells.length
+      ? res.worst_cells.map(w =>
+        `<div class="ward"><span>${w.cell}<br><small>→ ${w.near} · ${w.crimes_per_mo}/mo</small></span><b>+${Math.round(w.delta_s)}s</b></div>`).join("")
+      : '<span class="hint">no cells materially affected — overlapping cover absorbs this closure</span>';
+    // paint cell deltas
+    deltaLayer.clearLayers();
+    (res.cell_deltas || []).forEach(c => {
+      if (c.delta_s < 30) return;
+      L.circleMarker([c.lat, c.lon], { radius: Math.min(22, 5 + c.delta_s/30), weight:0,
+        fillColor: deltaColor(c.delta_s), fillOpacity:.5 })
+        .bindTooltip(`${c.cell}: +${Math.round(c.delta_s)}s`).addTo(deltaLayer);
+    });
+  } finally {
+    btn.disabled = false; btn.textContent = "RUN COUNTERFACTUAL";
+  }
+}
+</script>
+</body>
+</html>
