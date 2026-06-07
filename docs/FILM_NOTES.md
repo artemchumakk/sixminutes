@@ -1,22 +1,28 @@
 # 🎬 The 2014 Film — Speaker Notes
 
-## ⚡ THE 40-SECOND CUT (use this for the video — conversational)
-*(red stations)* "So — 2014. London's broke, and they close ten fire stations…
-basically whichever looked quietest on paper. They promised response times would
-hold. They didn't — those neighbourhoods got sixty-three seconds slower."
-*(heat + counters)* "Here's the wild bit: our simulator never saw any pre-2014
-data — and it still puts that damage at fifty-two seconds. Two totally different
-methods, same answer. So you can actually trust this thing."
-*(search HUD)* "So we asked it: keep the savings, find a better ten. Problem is,
-closures mess with each other — so it has to test whole networks. That's three
-hundred simulated years of London."
-*(teal ten, cooler map)* "And look at this — ten completely different stations.
-Not one in common. A third less damage: four thousand missed responses a year
-drops to twenty-seven hundred."
+## ⚡ THE 40-SECOND CUT (conversational + technical, numbers sync to the UI)
+*(red stations + £45M / 14 / −50% counters)* "2014, austerity: London needs
+forty-five million in savings, and this plan delivers twenty-nine of it — ten
+stations, fourteen engines, five hundred and fifty-two posts. And fair's fair —
+fires had halved in a decade. The plan's own line was that response targets would
+be maintained."
+*(heat + 63s / 4,049 / +9.3s counters)* "So we measured it. Difference-in-
+differences — those ten neighbourhoods against the rest of London as the control:
+sixty-three seconds slower. And our twin, which never saw any pre-2014 data,
+prices the same wound at fifty-two. Two independent methods, one answer."
+*(search HUD, odometer)* "Then we asked: same cuts, better ten? Closures
+interact — you can't rank stations one at a time — so it tests whole networks:
+a hundred and thirty-three thousand incidents per candidate, three hundred
+simulated years."
+*(teal ten + 2,762 / ×1.47 / 0-10 counters)* "Ten different stations, zero
+overlap — and four thousand missed responses a year drops to twenty-seven
+hundred. A third less damage, same money."
 *(hold)* "Counting calls is easy. Coverage is a network."
 
-*30s version: cut "basically whichever looked quietest on paper" and "So you can
-actually trust this thing."*
+*~35s version: drop "And fair's fair — fires had halved in a decade."*
+*Evidence for "targets maintained": LFB's 2013 savings publication — "savings
+worth £28.8m over the next two years while maintaining existing response time
+targets" (london-fire.gov.uk, 2013 news).*
 
 ---
 
