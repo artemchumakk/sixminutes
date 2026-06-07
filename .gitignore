@@ -38,3 +38,6 @@ data/processed/geo/*
 !data/processed/fire_damage_v2.parquet
 !data/processed/sweep_112.parquet
 !data/processed/geo/ambulance_*.geojson
+
+results.json
+web/tsconfig.tsbuildinfo

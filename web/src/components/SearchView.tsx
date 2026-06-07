@@ -2,7 +2,7 @@ import { useMemo, useState } from "react";
 import { CHATS } from "../lib/mock";
 import { Folder, Search } from "./ui/icons";
 
-export default function SearchView() {
+export default function SearchView({ onOpen }: { onOpen?: (text: string) => void }) {
   const [q, setQ] = useState("");
 
   const results = useMemo(() => {
@@ -45,6 +45,7 @@ export default function SearchView() {
           {results.map((c) => (
             <button
               key={c.id}
+              onClick={() => onOpen?.(c.title)}
               className="group flex h-56 flex-col rounded-2xl border border-neutral-200 bg-white p-5 text-left transition-all hover:-translate-y-0.5 hover:border-neutral-300 hover:shadow-[0_8px_24px_rgba(0,0,0,0.06)]"
             >
               <div className="text-[16px] font-medium leading-snug text-neutral-900">{c.title}</div>

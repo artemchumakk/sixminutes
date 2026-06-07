@@ -1,6 +1,7 @@
 import { useEffect, useState, type ReactNode } from "react";
 import type { Workspace } from "../lib/types";
 import { fetchStations } from "../lib/api";
+import { defaultFolderName } from "../lib/workspaces";
 import { cx } from "./ui/primitives";
 import {
   ChevronDown,
@@ -18,9 +19,10 @@ interface WorkspaceFolderData {
   chats: { title: string; live?: boolean }[];
 }
 
-const INITIAL_WORKSPACES: WorkspaceFolderData[] = [
+// folder label is service-specific (e.g. fire dispatches from "Soho Fire Station")
+const initialWorkspaces = (folder: string): WorkspaceFolderData[] => [
   {
-    name: "London Bridge Hospital",
+    name: folder,
     chats: [
       { title: "Closure damage audit", live: true },
       { title: "C2 response tail · Lambeth" },
@@ -86,6 +88,16 @@ const FIRE_ANALYSES: { group: string; items: { title: string; hint: string; ask:
   },
 ];
 
+// ambulance workspace: the dispatcher's board — the same map-driving quick asks,
+// wired to the ambulance engine's deterministic operator (:8096)
+const AMB_QUICK_ASKS = [
+  "Rank stations by how irreplaceable they are",
+  "Which closure hurts C1 response least?",
+  "What does losing my nearest station cost?",
+  "Where does the 7-minute promise break?",
+  "Reset the board",
+];
+
 export default function Sidebar({
   ws,
   onNewChat,
@@ -105,8 +117,11 @@ export default function Sidebar({
   myStation?: string | null;
   onSelectStation?: (s: string | null) => void;
 }) {
-  const [workspaces, setWorkspaces] = useState<WorkspaceFolderData[]>(INITIAL_WORKSPACES);
+  const [workspaces, setWorkspaces] = useState<WorkspaceFolderData[]>(() =>
+    initialWorkspaces(defaultFolderName(ws.id))
+  );
   const fire = ws.id === "fire";
+  const mapWs = ws.id === "fire" || ws.id === "ambulance";
   const [stationNames, setStationNames] = useState<string[]>([]);
   useEffect(() => {
     if (fire && stationNames.length === 0) {
@@ -151,32 +166,29 @@ export default function Sidebar({
           <Item icon={<NewChat size={18} />} onClick={onNewChat}>
             New chat
           </Item>
-          {!fire && (
-            <Item icon={<Search size={18} />} onClick={onSearch}>
-              Search
-            </Item>
-          )}
+          <Item icon={<Search size={18} />} onClick={onSearch}>
+            Search
+          </Item>
           <Item icon={<Waveform size={18} />} onClick={onVoice}>
             Voice agent
           </Item>
         </nav>
 
-        {!fire && (
-          <>
-            <Section>Workspaces</Section>
-            <nav className="flex flex-col gap-0.5">
-              {workspaces.map((w, i) => (
-                <WorkspaceFolder key={w.name} data={w} onDelete={() => deleteWorkspace(i)} />
-              ))}
-              <Item icon={<Plus size={18} />} onClick={addWorkspace}>
-                Add workspace
-              </Item>
-            </nav>
-          </>
-        )}
+        {/* Workspaces — cosmetic in the fire/map workspaces, functional folders elsewhere */}
+        <Section>Workspaces</Section>
+        <nav className="flex flex-col gap-0.5">
+          {workspaces.map((w, i) => (
+            <WorkspaceFolder key={w.name} data={w} onDelete={() => deleteWorkspace(i)} />
+          ))}
+          <Item icon={<Plus size={18} />} onClick={addWorkspace}>
+            Add workspace
+          </Item>
+        </nav>
 
-        {fire ? (
+        {mapWs ? (
           <>
+            {fire ? (
+              <>
             <Section>My station</Section>
             <div className="px-0.5">
               <select
@@ -230,6 +242,19 @@ export default function Sidebar({
                 Reset the board
               </button>
             </div>
+              </>
+            ) : (
+              <>
+            <Section>Suggested analyses</Section>
+            <nav className="flex flex-col gap-0.5">
+              {AMB_QUICK_ASKS.map((q) => (
+                <PlainItem key={q} onClick={() => onQuickAsk?.(q)}>
+                  {q}
+                </PlainItem>
+              ))}
+            </nav>
+              </>
+            )}
           </>
         ) : (
           <>
