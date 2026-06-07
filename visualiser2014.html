@@ -281,7 +281,7 @@ function runSearch(){
     const pool = all.filter(n => !locked.includes(n) && n !== winner);
     const cands = pool.slice((round*37) % pool.length)
                       .concat(pool).slice(0, CANDS_PER_ROUND - 1).concat([winner]);
-    const scanMs = round < 2 ? 62 : Math.max(16, 50 - round*5);   // rounds speed up
+    const scanMs = round === 0 ? 26 : 11;                          // fast cut: ~6s total
 
     later(()=>{ $("hud-round").textContent = `ROUND ${round+1} / 10`; }, t);
 
@@ -311,15 +311,12 @@ function runSearch(){
       Object.entries(S.stations).forEach(([n, mm])=>{
         if(PICK_ORDER.slice(0, round+1).includes(n)) return;
         mm.setStyle({fillOpacity:.75});
-        later(()=> mm.setStyle({fillOpacity:.4}), 240);
+        later(()=> mm.setStyle({fillOpacity:.4}), 180);
       });
     }, t);
-    t += round < 2 ? 700 : 420;
+    t += round === 0 ? 380 : 230;
   });
-  later(()=>{ yearsEl.textContent = YEAR_TOTAL;
-    lower(true,"The selection",
-      "Ten rounds, <b>300 simulated years</b>. The marginal damage of the 10th closure runs <b>4.7×</b> the 1st — the objective is non-additive, so no sorted list can find this set.","teal");
-  }, t + 200);
+  later(()=>{ yearsEl.textContent = YEAR_TOTAL; }, t + 150);
 }
 
 // --------------------------------------------------------------- beats -----
@@ -344,7 +341,7 @@ const BEATS = [
         {label:"Fires attended",value:"",countTo:50,prefix:"−",suffix:"%",
          note:"over the preceding decade — the stated case that capacity exceeded demand"},
       ]);
-      lower(true,"The rationale · 2013","Austerity arithmetic: demand had <b>halved in a decade</b>, so the Fifth London Safety Plan offers stations for savings. Its own modelling asserts response targets <b>will be maintained</b>.",""); },
+      lower(false); },
 
 // 2 — THE TEN
 ()=>{ title(false); verdict(false); stats([]); hud(false); $("brand").classList.add("show");
@@ -356,7 +353,7 @@ const BEATS = [
         m.setStyle({color:"#dc2626",fillColor:"#dc2626",fillOpacity:.92,opacity:1,radius:7.5,weight:2.5});
         pulse(m,"#dc2626"); label(m,n,"red");
       }, 600+i*330));
-      lower(true,"The selection · 9 January 2014","<b>Ten stations close</b> — Clerkenwell, serving since 1872, among them. Stations were scored in isolation: per-house activity and cost. The plan optimised <b>city-wide averages</b> — and averages conceal which grounds pay.","red"); },
+      lower(false); },
 
 // 3 — THE IMPACT
 ()=>{ title(false); verdict(false); hud(false); clearLabels(); setStations("redset");
@@ -370,7 +367,7 @@ const BEATS = [
         {label:"City-wide mean attendance",value:"",countTo:N.mean_s,prefix:"+",suffix:"s",decimals:1,
          note:"Δ mean first attendance across all incidents"},
       ]);
-      lower(true,"One year later · measured","Difference-in-differences against the rest-of-London control isolates the closure effect: <b>+63 seconds</b> first-appliance attendance in the ten former grounds. The 'targets maintained' assertion did not survive contact with the data.","red"); },
+      lower(false); },
 
 // 4 — THE QUESTION
 ()=>{ verdict(false); stats([]); lower(false); hud(false); clearLabels();
@@ -385,8 +382,8 @@ const BEATS = [
       map.flyTo([51.5074,-0.105],11.3,{duration:1.6});
       $("hud-years").textContent="0"; $("hud-feed").innerHTML=""; $("hud-round").textContent="ROUND 1 / 10";
       hud(true);
-      lower(true,"The optimiser","Objective: <b>annualised exceedances of the 360s standard</b>. Sequential greedy over closure <b>sets</b> — each candidate scored by a CRN-paired discrete-event replay of a full year. Closures interact; stations are never scored alone.","teal");
-      later(runSearch, 1400); },
+      lower(false);
+      later(runSearch, 900); },
 
 // 6 — THE RESULT
 ()=>{ title(false); verdict(false); hud(false); clearLabels(); setStations("dual");
@@ -401,7 +398,7 @@ const BEATS = [
         {label:"Set overlap with LSP5",value:"",countTo:0,suffix:" / 10",
          note:"the optimum shares no station with the 2014 selection"},
       ]);
-      lower(true,"The result","Ten different closures — <b>a visibly cooler London</b>. 1,287 fewer missed responses per year at identical cost, under the same simulator that blind-reproduced the real 2014 damage.","teal"); },
+      lower(false); },
 
 // 7 — THE VERDICT
 ()=>{ title(false); stats([]); lower(false); hud(false); clearLabels(); setStations("dual");
