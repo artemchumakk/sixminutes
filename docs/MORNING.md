@@ -45,10 +45,19 @@ amber commit + "~one breach in the next four hours" for cover, jailbreak held.
 - Remote restart impossible (no BMC, no LAN path, no reverse channel). First hand on the
   power button wins.
 
-### 4. LLM backend decision
-**Nebius Super-120B stays.** Bench: 1.1–1.8s/turn, 88–181 tok/s, 3/3 JSON protocol.
-The Spark eager-mode serve would have been slower than this; it's a sovereignty demo, not a
-speed upgrade. Spark's rubric contribution stands on the XGBoost training (598k legs, 1.8s).
+### 4. LLM backend decision — three-tier bench (Nebius, our exact protocol prompt)
+| Model | Turn | Decode | Protocol |
+|---|---|---|---|
+| Nano-30B-A3B | 1.3–1.9s | 209–255 tok/s | 2/3 — broke JSON protocol (matches Saturday's live failures) |
+| **Super-120B-A12B** ✓ | 1.1–1.8s | 88–181 tok/s | 3/3 |
+| Ultra-550B-A55B | 1.8–2.4s | 31–53 tok/s | 3/3 but 3–5× slower decode |
+
+**Super-120B = measured Pareto optimum** — use this line + table in submission/video
+("we evaluated three Nemotron tiers on the choreography protocol; 120B is the sweet spot").
+The Spark eager-mode serve would have been slower than Nebius; it's a sovereignty demo, not
+a speed upgrade. Spark's rubric contribution stands on the XGBoost training (598k legs, 1.8s).
+⚠️ 10-second morning task: glance at the Nebius dashboard balance so credits can't surprise
+us mid-judging.
 
 ## 🔧 Spark rebuild recipe (08:00, ~15 min)
 ```bash
