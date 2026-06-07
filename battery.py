@@ -34,6 +34,14 @@ Q: list[tuple[str, str]] = [
     ("20-recall", "What happened at minute 14 of your session?"),
 ]
 
+# context-aware questions: (id, text, board context) — the My Station path
+QC: list[tuple[str, str, dict]] = [
+    ("21-mystation-cover", "My engines just committed — who covers my ground for the next few hours?",
+     {"station": "Islington", "closed": [], "hours": None}),
+    ("22-mystation-night", "Compare closing my station at night versus during the day.",
+     {"station": "Dagenham", "closed": [], "hours": None}),
+]
+
 
 def tip() -> int:
     return httpx.get(f"{API}/ui/commands", params={"since": 999_999_999}, timeout=10).json()["next"]
@@ -44,10 +52,13 @@ def cmds_since(t: int) -> list[str]:
     return [c["type"] for c in cs]
 
 
-def ask(text: str, timeout: int = 360) -> tuple[int, str, float]:
+def ask(text: str, timeout: int = 360, context: dict | None = None) -> tuple[int, str, float]:
     t0 = time.time()
     try:
-        r = httpx.post(f"{API}/ask", json={"text": text, "speak": False}, timeout=timeout)
+        payload: dict = {"text": text, "speak": False}
+        if context is not None:
+            payload["context"] = context
+        r = httpx.post(f"{API}/ask", json=payload, timeout=timeout)
         body = r.json()
         return r.status_code, body.get("answer", body.get("detail", ""))[:220], time.time() - t0
     except Exception as e:
@@ -61,6 +72,17 @@ def main() -> None:
         code, answer, dt = ask(text)
         rows.append((qid, code, round(dt, 1), ",".join(cmds_since(t)) or "-", answer.replace("\n", " ")))
         print(f"[{qid}] {code} {dt:5.1f}s | {rows[-1][3][:70]}\n    {answer[:180]}\n", flush=True)
+
+    for qid, text, ctx in QC:
+        t = tip()
+        code, answer, dt = ask(text, context=ctx)
+        cmds = ",".join(cmds_since(t)) or "-"
+        flag = ""
+        if qid == "21-mystation-cover":
+            if "close_stations" in cmds: flag = " !! used close_stations for a cover question"
+            if "per year" in answer or "/yr" in answer: flag += " !! annualized a tactical move"
+        rows.append((qid, code, round(dt, 1), cmds, answer.replace("\n", " ") + flag))
+        print(f"[{qid}] {code} {dt:5.1f}s | {cmds[:70]}{flag}\n    {answer[:180]}\n", flush=True)
 
     # 12: STOP mid-run
     t = tip()

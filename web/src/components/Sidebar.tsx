@@ -60,7 +60,7 @@ const FIRE_ANALYSES: { group: string; items: { title: string; hint: string; ask:
       {
         title: "My station: night vs day",
         hint: "the after-dark difference",
-        ask: "Compare closing my station at night versus during the day.",
+        ask: "Show me the difference between closing my station at night versus during the day.",
       },
     ],
   },
