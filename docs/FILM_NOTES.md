@@ -1,5 +1,23 @@
 # 🎬 The 2014 Film — Speaker Notes
 
+## ⚡ THE 40-SECOND CUT (use this for the video)
+*(red stations)* "January 2014: austerity closes ten London fire stations — picked by
+which looked quietest on paper. The plan said response times would hold. They didn't —
+those neighbourhoods got sixty-three seconds slower."
+*(heat + counters)* "Our twin never saw pre-2014 data — yet it independently prices
+that same wound at fifty-two seconds. Two methods, one answer. That's why you can
+trust it."
+*(search HUD)* "So we asked: same savings — was there a better ten? Closures interact,
+so the optimiser scores whole networks: three hundred simulated years of London."
+*(teal ten, cooler map)* "Ten different stations. Zero overlap. A third less harm —
+four thousand missed responses a year becomes twenty-seven hundred."
+*(hold)* "Counting calls is easy. Coverage is a network."
+
+*30s version: cut "picked by which looked quietest on paper" and "That's why you can
+trust it."*
+
+---
+
 `localhost:8095/2014` · full-screen · **→** advances, **←** rewinds (Space also works).
 On-screen captions are OFF — you are the narration. Each beat: what the screen does,
 what you say, and the depth to reach for if a judge probes.
