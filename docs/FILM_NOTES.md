@@ -1,20 +1,22 @@
 # 🎬 The 2014 Film — Speaker Notes
 
-## ⚡ THE 40-SECOND CUT (use this for the video)
-*(red stations)* "January 2014: austerity closes ten London fire stations — picked by
-which looked quietest on paper. The plan said response times would hold. They didn't —
-those neighbourhoods got sixty-three seconds slower."
-*(heat + counters)* "Our twin never saw pre-2014 data — yet it independently prices
-that same wound at fifty-two seconds. Two methods, one answer. That's why you can
-trust it."
-*(search HUD)* "So we asked: same savings — was there a better ten? Closures interact,
-so the optimiser scores whole networks: three hundred simulated years of London."
-*(teal ten, cooler map)* "Ten different stations. Zero overlap. A third less harm —
-four thousand missed responses a year becomes twenty-seven hundred."
+## ⚡ THE 40-SECOND CUT (use this for the video — conversational)
+*(red stations)* "So — 2014. London's broke, and they close ten fire stations…
+basically whichever looked quietest on paper. They promised response times would
+hold. They didn't — those neighbourhoods got sixty-three seconds slower."
+*(heat + counters)* "Here's the wild bit: our simulator never saw any pre-2014
+data — and it still puts that damage at fifty-two seconds. Two totally different
+methods, same answer. So you can actually trust this thing."
+*(search HUD)* "So we asked it: keep the savings, find a better ten. Problem is,
+closures mess with each other — so it has to test whole networks. That's three
+hundred simulated years of London."
+*(teal ten, cooler map)* "And look at this — ten completely different stations.
+Not one in common. A third less damage: four thousand missed responses a year
+drops to twenty-seven hundred."
 *(hold)* "Counting calls is easy. Coverage is a network."
 
-*30s version: cut "picked by which looked quietest on paper" and "That's why you can
-trust it."*
+*30s version: cut "basically whichever looked quietest on paper" and "So you can
+actually trust this thing."*
 
 ---
 
