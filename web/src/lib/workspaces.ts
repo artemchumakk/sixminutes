@@ -7,7 +7,7 @@ export const WORKSPACES: Workspace[] = [
     short: "Ambulance",
     icon: "✚",
     promiseMin: 7,
-    accent: "#5eead4",
+    accent: "#ef4444",
     available: true,
     blurb: "C1 7-min promise · learned response physics · live transfer model",
   },
@@ -35,3 +35,8 @@ export const WORKSPACES: Workspace[] = [
 
 export const getWorkspace = (id: string) =>
   WORKSPACES.find((w) => w.id === id) ?? WORKSPACES[0];
+
+// Default board/folder label shown in the sidebar "Workspaces" section and the
+// composer folder pill. Service-specific: fire dispatches from a fire station.
+export const defaultFolderName = (id: string) =>
+  id === "fire" ? "Soho Fire Station" : "London Bridge Hospital";

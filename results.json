@@ -1,0 +1,99 @@
+{
+  "meta": {
+    "host": "ynk-m3.local",
+    "python": "3.12.0",
+    "xgboost": "3.2.0",
+    "use_cuda": false,
+    "gpu_mem_used_mib_at_start": null
+  },
+  "tests": [
+    {
+      "name": "1. GPU lights-on",
+      "purpose": "Prove training genuinely runs on the GB10 GPU.",
+      "status": "ERROR",
+      "findings": {},
+      "error": "Traceback (most recent call last):\n  File \"/Users/ynkvch/Downloads/development/sixminutes/spark_tests.py\", line 69, in test1\n    Xtr,ytr,Xte,yte = train_data()\n                      ^^^^^^^^^^^^\n  File \"/Users/ynkvch/Downloads/development/sixminutes/spark_tests.py\", line 61, in train_data\n    _TRAIN = build_training()\n             ^^^^^^^^^^^^^^^^\n  File \"/Users/ynkvch/Downloads/development/sixminutes/spark_tests.py\", line 21, in build_training\n    mob = pl.read_parquet(DATA/\"mobilisations.parquet\").filter(\n          ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^\n  File \"/Users/ynkvch/Downloads/development/sixminutes/.venv/lib/python3.12/site-packages/polars/_utils/deprecation.py\", line 128, in wrapper\n    return function(*args, **kwargs)\n           ^^^^^^^^^^^^^^^^^^^^^^^^^\n  File \"/Users/ynkvch/Downloads/development/sixminutes/.venv/lib/python3.12/site-packages/polars/_utils/deprecation.py\", line 128, in wrapper\n    return function(*args, **kwargs)\n           ^^^^^^^^^^^^^^^^^^^^^^^^^\n  File \"/Users/ynkvch/Downloads/development/sixminutes/.venv/lib/python3.12/site-packages/polars/io/parquet/functions.py\", line 293, in read_parquet\n    return lf.collect()\n           ^^^^^^^^^^^^\n  File \"/Users/ynkvch/Downloads/development/sixminutes/.venv/lib/python3.12/site-packages/polars/_utils/deprecation.py\", line 97, in wrapper\n    return function(*args, **kwargs)\n           ^^^^^^^^^^^^^^^^^^^^^^^^^\n  File \"/Users/ynkvch/Downloads/development/sixminutes/.venv/lib/python3.12/site-packages/polars/lazyframe/opt_flags.py\", line 343, in wrapper\n    return function(*args, **kwargs)\n           ^^^^^^^^^^^^^^^^^^^^^^^^^\n  File \"/Users/ynkvch/Downloads/development/sixminutes/.venv/lib/python3.12/site-packages/polars/lazyframe/frame.py\", line 2630, in collect\n    return wrap_df(ldf.collect(engine, callback))\n                   ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^\nFileNotFoundError: No such file or directory (os error 2): /Users/ynkvch/Downloads/development/sixminutes/data/mobilisations.parquet\n",
+      "duration_s": 0.004336118698120117
+    },
+    {
+      "name": "2. GPU model accuracy",
+      "purpose": "Confirm GPU training quality.",
+      "status": "ERROR",
+      "findings": {},
+      "error": "Traceback (most recent call last):\n  File \"/Users/ynkvch/Downloads/development/sixminutes/spark_tests.py\", line 103, in test2\n    Xtr,ytr,Xte,yte = train_data()\n                      ^^^^^^^^^^^^\n  File \"/Users/ynkvch/Downloads/development/sixminutes/spark_tests.py\", line 61, in train_data\n    _TRAIN = build_training()\n             ^^^^^^^^^^^^^^^^\n  File \"/Users/ynkvch/Downloads/development/sixminutes/spark_tests.py\", line 21, in build_training\n    mob = pl.read_parquet(DATA/\"mobilisations.parquet\").filter(\n          ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^\n  File \"/Users/ynkvch/Downloads/development/sixminutes/.venv/lib/python3.12/site-packages/polars/_utils/deprecation.py\", line 128, in wrapper\n    return function(*args, **kwargs)\n           ^^^^^^^^^^^^^^^^^^^^^^^^^\n  File \"/Users/ynkvch/Downloads/development/sixminutes/.venv/lib/python3.12/site-packages/polars/_utils/deprecation.py\", line 128, in wrapper\n    return function(*args, **kwargs)\n           ^^^^^^^^^^^^^^^^^^^^^^^^^\n  File \"/Users/ynkvch/Downloads/development/sixminutes/.venv/lib/python3.12/site-packages/polars/io/parquet/functions.py\", line 293, in read_parquet\n    return lf.collect()\n           ^^^^^^^^^^^^\n  File \"/Users/ynkvch/Downloads/development/sixminutes/.venv/lib/python3.12/site-packages/polars/_utils/deprecation.py\", line 97, in wrapper\n    return function(*args, **kwargs)\n           ^^^^^^^^^^^^^^^^^^^^^^^^^\n  File \"/Users/ynkvch/Downloads/development/sixminutes/.venv/lib/python3.12/site-packages/polars/lazyframe/opt_flags.py\", line 343, in wrapper\n    return function(*args, **kwargs)\n           ^^^^^^^^^^^^^^^^^^^^^^^^^\n  File \"/Users/ynkvch/Downloads/development/sixminutes/.venv/lib/python3.12/site-packages/polars/lazyframe/frame.py\", line 2630, in collect\n    return wrap_df(ldf.collect(engine, callback))\n                   ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^\nFileNotFoundError: No such file or directory (os error 2): /Users/ynkvch/Downloads/development/sixminutes/data/mobilisations.parquet\n",
+      "duration_s": 0.0002548694610595703
+    },
+    {
+      "name": "3. Scale-up timing",
+      "purpose": "GPU vs CPU timing across sizes.",
+      "status": "ERROR",
+      "findings": {},
+      "error": "Traceback (most recent call last):\n  File \"/Users/ynkvch/Downloads/development/sixminutes/spark_tests.py\", line 123, in test3\n    Xtr,ytr,Xte,yte = train_data()\n                      ^^^^^^^^^^^^\n  File \"/Users/ynkvch/Downloads/development/sixminutes/spark_tests.py\", line 61, in train_data\n    _TRAIN = build_training()\n             ^^^^^^^^^^^^^^^^\n  File \"/Users/ynkvch/Downloads/development/sixminutes/spark_tests.py\", line 21, in build_training\n    mob = pl.read_parquet(DATA/\"mobilisations.parquet\").filter(\n          ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^\n  File \"/Users/ynkvch/Downloads/development/sixminutes/.venv/lib/python3.12/site-packages/polars/_utils/deprecation.py\", line 128, in wrapper\n    return function(*args, **kwargs)\n           ^^^^^^^^^^^^^^^^^^^^^^^^^\n  File \"/Users/ynkvch/Downloads/development/sixminutes/.venv/lib/python3.12/site-packages/polars/_utils/deprecation.py\", line 128, in wrapper\n    return function(*args, **kwargs)\n           ^^^^^^^^^^^^^^^^^^^^^^^^^\n  File \"/Users/ynkvch/Downloads/development/sixminutes/.venv/lib/python3.12/site-packages/polars/io/parquet/functions.py\", line 293, in read_parquet\n    return lf.collect()\n           ^^^^^^^^^^^^\n  File \"/Users/ynkvch/Downloads/development/sixminutes/.venv/lib/python3.12/site-packages/polars/_utils/deprecation.py\", line 97, in wrapper\n    return function(*args, **kwargs)\n           ^^^^^^^^^^^^^^^^^^^^^^^^^\n  File \"/Users/ynkvch/Downloads/development/sixminutes/.venv/lib/python3.12/site-packages/polars/lazyframe/opt_flags.py\", line 343, in wrapper\n    return function(*args, **kwargs)\n           ^^^^^^^^^^^^^^^^^^^^^^^^^\n  File \"/Users/ynkvch/Downloads/development/sixminutes/.venv/lib/python3.12/site-packages/polars/lazyframe/frame.py\", line 2630, in collect\n    return wrap_df(ldf.collect(engine, callback))\n                   ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^\nFileNotFoundError: No such file or directory (os error 2): /Users/ynkvch/Downloads/development/sixminutes/data/mobilisations.parquet\n",
+      "duration_s": 0.0001938343048095703
+    },
+    {
+      "name": "4. Full pipeline on Spark",
+      "purpose": "Prove the whole ambulance pipeline runs ON the box (data never leaves the room).",
+      "status": "PASS",
+      "findings": {
+        "outputs_present": {
+          "ambulance_demand.parquet": true,
+          "ambulance_stations.parquet": true,
+          "las_targets.parquet": true
+        }
+      },
+      "error": null,
+      "duration_s": 13.171341180801392
+    },
+    {
+      "name": "5. Performance",
+      "purpose": "Measure throughput: incidents/sec and full 73-station closure sweep time.",
+      "status": "PASS",
+      "findings": {
+        "transfer_50k_s": 2.73,
+        "incidents_per_sec": 18323,
+        "closure_sweep_s": 2.76,
+        "stations_swept": 70,
+        "transfer_result": {
+          "sim_mean_s": 381.1,
+          "sim_p90_s": 495.5,
+          "actual_mean_s": 429.8,
+          "actual_p90_s": 734.4,
+          "mean_gap_pct": -11.3,
+          "p90_gap_pct": -32.5,
+          "n": 50000
+        }
+      },
+      "error": null,
+      "duration_s": 5.489076137542725
+    },
+    {
+      "name": "6. Reproducibility",
+      "purpose": "Same seed must give the identical answer (no hidden randomness).",
+      "status": "PASS",
+      "findings": {
+        "run1": {
+          "sim_mean_s": 381.1,
+          "sim_p90_s": 495.5,
+          "actual_mean_s": 429.8,
+          "actual_p90_s": 734.4,
+          "mean_gap_pct": -11.3,
+          "p90_gap_pct": -32.5,
+          "n": 50000
+        },
+        "run2": {
+          "sim_mean_s": 381.1,
+          "sim_p90_s": 495.5,
+          "actual_mean_s": 429.8,
+          "actual_p90_s": 734.4,
+          "mean_gap_pct": -11.3,
+          "p90_gap_pct": -32.5,
+          "n": 50000
+        },
+        "identical": true
+      },
+      "error": null,
+      "duration_s": 5.566778898239136
+    }
+  ]
+}

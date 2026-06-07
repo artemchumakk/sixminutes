@@ -9,39 +9,49 @@ import {
 import L from "leaflet";
 import "leaflet/dist/leaflet.css";
 import {
-  API,
+  AMB_API,
   askAgent,
   fetchBaseline,
   fetchCommands,
   fetchStationDetail,
   fetchStations,
   fetchWardsGeo,
+  fetchCoverageCells,
+  fetchC2Series,
+  fetchStandby,
+  fetchWinter,
+  fetchHandover,
+  fetchHospitals,
   runScenario,
   type BaselineInfo,
   type HourBand,
   type ScenarioResult,
   type StationDetail,
   type UiCommand,
-} from "../../lib/api";
-import FirePanel from "./FirePanel";
+  type CoverageCells,
+  type DemandCategory,
+  type C2Series,
+  type Bucket,
+  type Hospital,
+  type StandbyResult,
+  type WinterResult,
+  type HandoverResult,
+} from "../../lib/ambApi";
+import AmbulancePanel from "./AmbulancePanel";
+import C2Banner from "./C2Banner";
+// ambulance-owned handle/message shapes (see ./types) — no longer borrowed from fire
+import type { AmbMapHandle, AmbMsg } from "./types";
 
-export interface FireMapHandle {
-  ask: (text: string, speak?: boolean) => void;
-  clearChat: () => void;
-  /** drop a system-style agent note into the thread without invoking the LLM */
-  note: (text: string) => void;
-  /** silence any playing TTS immediately */
-  stopAudio: () => void;
-}
+const TTS_RATE = 1.2; // brisk but natural (pitch preserved)
 
-export interface FireMsg {
-  id: number;
-  role: "user" | "agent";
-  text: string;
-  pending?: boolean;
-}
+// fire engine (read-only) — used only to overlay co-location candidates
+const FIRE_API =
+  (import.meta as { env?: Record<string, string> }).env?.VITE_SIXMINUTES_API ??
+  "http://localhost:8095";
 
-const TTS_RATE = 1.2; // brisk but natural (pitch preserved); 1.0–1.3 sane range
+/** Predicted-response colour ramp over the 7-minute (420s) C1 mean standard. */
+const covColor = (s: number | null) =>
+  s == null ? "#7f1d1d" : s <= 360 ? "#0d9488" : s <= 480 ? "#f59e0b" : "#dc2626";
 
 const norm = (s: string) =>
   (s || "")
@@ -51,18 +61,19 @@ const norm = (s: string) =>
     .replace(/\s+/g, " ")
     .trim();
 
-/** The validated fire twin as an analytical workspace: light-mode map + analyst panel.
- *  Click stations to close them — or ask the agent, which drives this same map. */
-const FireMap = forwardRef<
-  FireMapHandle,
+/** The ambulance free-flow twin as an analytical workspace: light-mode map + analyst panel.
+ *  Click stations to close them — or ask the agent, which drives this same map.
+ *  A faithful sibling of the fire map; only the data source (:8096) and labels differ. */
+const AmbulanceMap = forwardRef<
+  AmbMapHandle,
   {
     accent: string;
     onAnalysingChange?: (analysing: boolean) => void;
     onBusyChange?: (busy: boolean) => void;
-    onMessagesChange?: (msgs: FireMsg[]) => void;
+    onMessagesChange?: (msgs: AmbMsg[]) => void;
     onAudioStateChange?: (playing: boolean) => void;
   }
->(function FireMap(
+>(function AmbulanceMap(
   { accent, onAnalysingChange, onBusyChange, onMessagesChange, onAudioStateChange },
   handleRef
 ) {
@@ -79,12 +90,33 @@ const FireMap = forwardRef<
   const [baseline, setBaseline] = useState<BaselineInfo | null>(null);
   const [result, setResult] = useState<ScenarioResult | null>(null);
   const [running, setRunning] = useState(false);
+
+  // ---- coverage heatmap (the hero layer) -----------------------------------
+  const coverageRef = useRef<L.LayerGroup | null>(null);
+  const postureRef = useRef<L.LayerGroup | null>(null);
+  const fireRef = useRef<L.LayerGroup | null>(null);
+  const [coverage, setCoverage] = useState<CoverageCells | null>(null);
+  const [category, setCategory] = useState<DemandCategory>("proxy_all");
+  const [covHour, setCovHour] = useState(18);
+  const [showHeat, setShowHeat] = useState(true);
+  const [colocate, setColocate] = useState(false);
+  const [hospitals, setHospitals] = useState<Hospital[]>([]);
+  const [posture, setPosture] = useState<
+    | { kind: "standby"; data: StandbyResult }
+    | { kind: "winter"; data: WinterResult }
+    | { kind: "handover"; data: HandoverResult }
+    | null
+  >(null);
+  const [postureBusy, setPostureBusy] = useState(false);
+  const [panelOpen, setPanelOpen] = useState(false);
+  const categoryRef = useRef<DemandCategory>("proxy_all");
+  const covHourRef = useRef(18);
   const [station, setStation] = useState<StationDetail | null>(null);
   const stationRef = useRef<StationDetail | null>(null);
   useEffect(() => {
     stationRef.current = station;
   }, [station]);
-  const [msgs, setMsgs] = useState<FireMsg[]>([]);
+  const [msgs, setMsgs] = useState<AmbMsg[]>([]);
   const msgId = useRef(0);
   const busCursor = useRef<number | null>(null);
   const busTimer = useRef<number | null>(null);
@@ -109,7 +141,7 @@ const FireMap = forwardRef<
         for (let i = 0; i < buf.length; i++) s += buf[i];
         a = Math.min(1, (s / buf.length / 140) * 1.4);
       } else {
-        a = 0.45 + 0.35 * Math.abs(Math.sin(performance.now() / 260)); // graceful fallback
+        a = 0.45 + 0.35 * Math.abs(Math.sin(performance.now() / 260));
       }
       setAmp((prev) => prev * 0.55 + a * 0.45);
     }, 80);
@@ -121,7 +153,6 @@ const FireMap = forwardRef<
     setAmp(0);
   }, []);
 
-  // pulse a marker's radius (close/arrival emphasis)
   const pulse = useCallback((m: L.CircleMarker, scale = 1.9, ms = 480) => {
     const r0 = m.getRadius();
     const t0 = performance.now();
@@ -135,14 +166,13 @@ const FireMap = forwardRef<
     requestAnimationFrame(step);
   }, []);
 
-  // animated pump relocation: progressive arc + traveling dot + arrival pulse
+  // animated vehicle relocation: progressive arc + traveling dot + arrival pulse
   const animateMove = useCallback(
     (fromName: string, toName: string) => {
       const map = mapRef.current;
       const A = stationsRef.current[fromName]?.getLatLng();
       const B = stationsRef.current[toName]?.getLatLng();
       if (!map || !A || !B) return;
-      // quadratic bezier control point, offset perpendicular for a gentle arc
       const mlat = (A.lat + B.lat) / 2;
       const mlng = (A.lng + B.lng) / 2;
       const dx = B.lng - A.lng;
@@ -167,7 +197,7 @@ const FireMap = forwardRef<
       const t0 = performance.now();
       const step = (t: number) => {
         const p = Math.min(1, (t - t0) / DUR);
-        const ease = p < 0.5 ? 2 * p * p : 1 - (-2 * p + 2) ** 2 / 2; // easeInOutQuad
+        const ease = p < 0.5 ? 2 * p * p : 1 - (-2 * p + 2) ** 2 / 2;
         const idx = Math.max(1, Math.round(ease * N));
         line.setLatLngs(pts.slice(0, idx + 1));
         dot.setLatLng(pts[Math.min(idx, N)]);
@@ -216,6 +246,144 @@ const FireMap = forwardRef<
     });
   }, []);
 
+  // ---- coverage heatmap: where long predicted response meets heavy demand ----
+  const paintCoverage = useCallback((cov: CoverageCells | null, show: boolean) => {
+    const lg = coverageRef.current;
+    if (!lg) return;
+    lg.clearLayers();
+    if (!show || !cov) return;
+    const maxD = Math.max(1, ...cov.cells.map((c) => c.demand));
+    cov.cells.forEach((c) => {
+      const r = 3 + 12 * Math.sqrt(c.demand / maxD);
+      const respTxt = c.response_s == null ? "no station within 15 km" : `${Math.round(c.response_s)}s predicted`;
+      const m = L.circleMarker([c.lat, c.lon], {
+        pane: "cov", radius: r, weight: 0, fillColor: covColor(c.response_s), fillOpacity: 0.5,
+      });
+      m.bindTooltip(`${c.demand.toLocaleString()} calls/yr · ${respTxt}`, { className: "firemap-tip" });
+      lg.addLayer(m);
+    });
+  }, []);
+
+  const loadCoverage = useCallback(
+    async (hour: number, cat: DemandCategory) => {
+      try {
+        const cov = await fetchCoverageCells(hour, cat);
+        setCoverage(cov);
+      } catch {
+        /* heatmap is best-effort */
+      }
+    },
+    []
+  );
+
+  // repaint whenever the data or the toggle changes
+  useEffect(() => {
+    paintCoverage(coverage, showHeat);
+  }, [coverage, showHeat, paintCoverage]);
+
+  const onCoverage = useCallback(
+    (cat: DemandCategory, hour: number) => {
+      categoryRef.current = cat;
+      covHourRef.current = hour;
+      setCategory(cat);
+      setCovHour(hour);
+      loadCoverage(hour, cat);
+    },
+    [loadCoverage]
+  );
+
+  // ---- predictive-posture playbooks (standby / winter / handover) -----------
+  const paintPosture = useCallback(
+    (p: typeof posture) => {
+      const lg = postureRef.current;
+      const map = mapRef.current;
+      if (!lg || !map) return;
+      lg.clearLayers();
+      if (!p) return;
+      const coords = p.data.cell_coords || {};
+      const addPin = (cell: string, color: string, label: string) => {
+        const c = coords[cell];
+        if (!c) return;
+        L.circleMarker([c.lat, c.lon], {
+          pane: "cov", radius: 17, weight: 2, color, fillColor: color, fillOpacity: 0.1,
+        }).addTo(lg);
+        const m = L.circleMarker([c.lat, c.lon], {
+          pane: "stns", radius: 8, weight: 3, color: "#ffffff", fillColor: color, fillOpacity: 1,
+        });
+        m.bindTooltip(label, { className: "firemap-tip" });
+        lg.addLayer(m);
+      };
+      if (p.kind === "standby")
+        p.data.standby_here.forEach((s, i) =>
+          addPin(s.cell, accent, `Standby ${i + 1}: ${s.demand.toLocaleString()} calls/yr underserved · ${Math.round(s.cur_response_s)}s`)
+        );
+      if (p.kind === "winter")
+        p.data.standby_added.forEach((cell, i) => addPin(cell, accent, `Recovery standby unit ${i + 1}`));
+      if (p.kind === "handover" && p.data.best_patch_cell)
+        addPin(p.data.best_patch_cell, "#16a34a", "Best patch — relocate one unit here");
+      const pts = lg
+        .getLayers()
+        .map((l) => (l as L.CircleMarker).getLatLng?.())
+        .filter(Boolean) as L.LatLng[];
+      if (pts.length) map.flyToBounds(L.latLngBounds(pts).pad(0.45), { duration: 0.8 });
+    },
+    [accent]
+  );
+
+  const runPlaybook = useCallback(
+    async (kind: "standby" | "winter" | "handover", opts?: { bucket?: Bucket; hospital?: string }) => {
+      setPanelOpen(true);
+      setPostureBusy(true);
+      try {
+        let p: typeof posture;
+        if (kind === "standby") p = { kind, data: await fetchStandby(opts?.bucket ?? "pm") };
+        else if (kind === "winter") p = { kind, data: await fetchWinter(opts?.bucket ?? "eve") };
+        else
+          p = {
+            kind,
+            data: await fetchHandover(
+              opts?.hospital ?? hospitals[0]?.name ?? "Royal London (Whitechapel)",
+              opts?.bucket ?? "pm"
+            ),
+          };
+        setPosture(p);
+        paintPosture(p);
+      } catch {
+        /* playbook best-effort */
+      } finally {
+        setPostureBusy(false);
+      }
+    },
+    [paintPosture, hospitals]
+  );
+
+  const clearPosture = useCallback(() => {
+    setPosture(null);
+    postureRef.current?.clearLayers();
+  }, []);
+
+  // ---- fire co-location overlay (free joint coverage) -----------------------
+  const onColocate = useCallback(async (on: boolean) => {
+    setColocate(on);
+    const lg = fireRef.current;
+    if (!lg) return;
+    lg.clearLayers();
+    if (!on) return;
+    try {
+      const r = await fetch(`${FIRE_API}/stations`);
+      const fs: { name: string; lat: number; lon: number }[] = await r.json();
+      fs.forEach((s) => {
+        const m = L.circleMarker([s.lat, s.lon], {
+          pane: "stns", radius: 4.5, weight: 1.6, color: "#9333ea", fillColor: "#ffffff", fillOpacity: 0.9,
+        });
+        m.bindTooltip(`Fire station: ${s.name} — free co-location candidate`, { className: "firemap-tip" });
+        lg.addLayer(m);
+      });
+    } catch {
+      /* fire engine may be offline; overlay is optional */
+    }
+  }, []);
+
   const run = useCallback(async () => {
     const names = [...closedRef.current];
     if (names.length === 0) {
@@ -249,6 +417,7 @@ const FireMap = forwardRef<
         const m = stationsRef.current[name];
         if (m) pulse(m);
         fetchStationDetail(name).then(setStation).catch(() => undefined);
+        setPanelOpen(true); // closing a station opens the analysis panel (fire-parity)
       }
       closedRef.current = next;
       setClosed([...next]);
@@ -284,7 +453,18 @@ const FireMap = forwardRef<
     map.createPane("stns");
     const pane = map.getPane("stns");
     if (pane) pane.style.zIndex = "620";
+    map.createPane("cov");
+    const covPane = map.getPane("cov");
+    if (covPane) covPane.style.zIndex = "610";
     mapRef.current = map;
+
+    coverageRef.current = L.layerGroup().addTo(map);
+    fireRef.current = L.layerGroup().addTo(map);
+    postureRef.current = L.layerGroup().addTo(map);
+
+    // hero layer + playbook metadata
+    loadCoverage(covHourRef.current, categoryRef.current);
+    fetchHospitals().then(setHospitals).catch(() => undefined);
 
     let cancelled = false;
 
@@ -313,7 +493,7 @@ const FireMap = forwardRef<
             fillColor: accent,
             fillOpacity: 0.5,
           }).addTo(map);
-          m.bindTooltip(`${s.name} · ${s.pumps} pump${s.pumps > 1 ? "s" : ""}`, {
+          m.bindTooltip(`${s.name} · ${s.pumps} vehicle${s.pumps > 1 ? "s" : ""}`, {
             className: "firemap-tip",
           });
           m.on("click", () => toggleStation(s.name));
@@ -328,11 +508,14 @@ const FireMap = forwardRef<
       mapRef.current = null;
       stationsRef.current = {};
       wardsRef.current = {};
+      coverageRef.current = null;
+      postureRef.current = null;
+      fireRef.current = null;
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
-  // ---- Ghost Operator: the agent drives THIS map ---------------------------
+  // ---- the agent drives THIS map -------------------------------------------
   const setClosedSet = useCallback(
     (updater: (prev: Set<string>) => Set<string>) => {
       closedRef.current = updater(closedRef.current);
@@ -348,7 +531,8 @@ const FireMap = forwardRef<
     paintWards({});
     setResult(null);
     setStation(null);
-  }, [setClosedSet, paintWards]);
+    clearPosture();
+  }, [setClosedSet, paintWards, clearPosture]);
 
   const execCommand = useCallback(
     (c: UiCommand) => {
@@ -356,8 +540,7 @@ const FireMap = forwardRef<
       switch (c.type) {
         case "audio":
           if (c.url) {
-            // QUEUE segments — never cut one narration with the next
-            audioQueue.current.push({ url: `${API}${c.url}`, text: c.text });
+            audioQueue.current.push({ url: `${AMB_API}${c.url}`, text: c.text });
             onAudioStateChange?.(true);
             const playNext = () => {
               const next = audioQueue.current.shift();
@@ -385,7 +568,6 @@ const FireMap = forwardRef<
               };
               a.onended = playNext;
               a.onerror = playNext;
-              // audio-reactive: tap the element into a shared analyser (best effort)
               try {
                 if (!audioCtx.current) {
                   const Ctx = window.AudioContext ??
@@ -446,10 +628,10 @@ const FireMap = forwardRef<
           break;
         }
         default:
-          break; // 2014/compare verbs live on the wall; harmless to skip here
+          break;
       }
     },
-    [paintWards, run, setClosedSet, animateMove, pulse]
+    [paintWards, run, setClosedSet, animateMove, pulse, onAudioStateChange, startAmpMeter, stopAmpMeter]
   );
 
   const stopBusPolling = useCallback(() => {
@@ -501,17 +683,17 @@ const FireMap = forwardRef<
           setMsgs((m) =>
             m.map((x, i) => (i === m.length - 1 && x.role === "agent" ? { ...x, text: final, pending: false } : x))
           );
-        }, 900); // let trailing narrations land first
+        }, 900);
       } catch {
         setMsgs((m) =>
           m.map((x, i) =>
             i === m.length - 1 && x.role === "agent"
-              ? { ...x, text: "Lost the agent — is the engine running?", pending: false }
+              ? { ...x, text: "Lost the agent — is the ambulance engine running on :8096?", pending: false }
               : x
           )
         );
       } finally {
-        window.setTimeout(stopBusPolling, 8000); // generous: final-verdict TTS lags the answer
+        window.setTimeout(stopBusPolling, 8000);
         setThinking(false);
         onBusyChange?.(false);
       }
@@ -542,17 +724,21 @@ const FireMap = forwardRef<
     onMessagesChange?.(msgs);
   }, [msgs, onMessagesChange]);
 
-  const analysing = closed.length > 0;
-
+  // Report panel open/close so Chat slides the composer (same animation as fire:
+  // open → input box glides to right-[336px]; close → glides back to centre).
   useEffect(() => {
-    onAnalysingChange?.(analysing);
-  }, [analysing, onAnalysingChange]);
+    onAnalysingChange?.(panelOpen);
+    return () => onAnalysingChange?.(false);
+  }, [panelOpen, onAnalysingChange]);
 
   const speaking = speakSeg !== null;
 
   return (
     <div className="absolute inset-0">
       <div ref={divRef} className="h-full w-full" />
+
+      {/* Insight 1 — the broken Category-2 promise, framing the whole board */}
+      <C2Banner accent={accent} />
 
       {/* ambient edge glow — the room breathes while the agent speaks */}
       <div
@@ -563,7 +749,7 @@ const FireMap = forwardRef<
         }}
       />
 
-      {/* corner presence — replaces the blocking center card */}
+      {/* corner presence */}
       {(thinking || speaking) && (
         <div className="pointer-events-none absolute left-4 top-4 z-[1100] flex items-center gap-2.5 rounded-full border border-neutral-200 bg-white/90 py-1.5 pl-2 pr-4 shadow-[0_2px_12px_rgba(0,0,0,0.08)] backdrop-blur-sm">
           <span
@@ -576,7 +762,7 @@ const FireMap = forwardRef<
             }}
           />
           <span className="text-[12px] font-medium text-neutral-600">
-            {speaking ? "Brigade Watch · speaking" : "Brigade Watch · thinking"}
+            {speaking ? "LAS Watch · speaking" : "LAS Watch · thinking"}
           </span>
           {speaking && (
             <span className="flex h-3.5 items-end gap-[2px]">
@@ -595,31 +781,34 @@ const FireMap = forwardRef<
         </div>
       )}
 
-      {/* cinematic subtitle — word-reveal paced to the segment's real duration */}
+      {/* cinematic subtitle */}
       {speakSeg && (
         <div
           className={
             "pointer-events-none absolute bottom-32 left-0 z-[1090] px-4 transition-[right] duration-300 " +
-            (analysing ? "right-[336px]" : "right-0")
+            (panelOpen ? "right-[336px]" : "right-0")
           }
         >
           <Subtitle key={speakSeg.t0} seg={speakSeg} accent={accent} />
         </div>
       )}
 
-      {/* quiet hint — the only chrome before an analysis begins */}
-      {!analysing && (
-        <div className="pointer-events-none absolute left-1/2 top-5 z-[1100] -translate-x-1/2 rounded-full border border-neutral-200 bg-white/90 px-4 py-1.5 text-[12.5px] text-neutral-500 shadow-[0_2px_12px_rgba(0,0,0,0.06)] backdrop-blur-sm">
-        click a fire station to start an analysis
-        </div>
-      )}
       {running && (
-        <div className="pointer-events-none absolute left-1/2 top-5 z-[1100] -translate-x-1/2 rounded-full border border-neutral-200 bg-white/90 px-4 py-1.5 text-[12.5px] text-neutral-500 shadow-[0_2px_12px_rgba(0,0,0,0.06)] backdrop-blur-sm">
-          simulating a year of London…
+        <div className="pointer-events-none absolute left-6 top-[72px] z-[1100] rounded-full border border-neutral-200 bg-white/90 px-4 py-1.5 text-[12.5px] text-neutral-500 shadow-[0_2px_12px_rgba(0,0,0,0.06)] backdrop-blur-sm">
+          re-simulating London…
         </div>
       )}
 
-      {/* choropleth legend — a warden can't brief colors they can't define */}
+      {/* coverage / scenario legend */}
+      {!result && showHeat && (
+        <div className="pointer-events-none absolute bottom-4 left-4 z-[1090] flex items-center gap-2.5 rounded-lg border border-neutral-200 bg-white/90 px-3 py-1.5 text-[11px] text-neutral-500 shadow-sm backdrop-blur-sm">
+          <span className="font-medium text-neutral-400">predicted response</span>
+          <span className="flex items-center gap-1"><span className="h-2.5 w-2.5 rounded-full" style={{ background: "#0d9488" }} />≤6 min</span>
+          <span className="flex items-center gap-1"><span className="h-2.5 w-2.5 rounded-full" style={{ background: "#f59e0b" }} />6–8 min</span>
+          <span className="flex items-center gap-1"><span className="h-2.5 w-2.5 rounded-full" style={{ background: "#dc2626" }} />8 min+</span>
+          <span className="text-neutral-400">· size = demand</span>
+        </div>
+      )}
       {result && !running && (
         <div className="pointer-events-none absolute bottom-4 left-4 z-[1090] flex items-center gap-2.5 rounded-lg border border-neutral-200 bg-white/90 px-3 py-1.5 text-[11px] text-neutral-500 shadow-sm backdrop-blur-sm">
           <span className="font-medium text-neutral-400">added response</span>
@@ -629,28 +818,55 @@ const FireMap = forwardRef<
         </div>
       )}
 
-      {/* analytics: appears only once an analysis is live */}
-      {analysing && (
-        <div className="animate-fade-up absolute bottom-3 right-3 top-14 z-[1100] w-[320px]">
-          <button
-            onClick={resetBoard}
-            title="Close analysis"
-            className="absolute right-2 top-2 z-[1101] flex h-7 w-7 items-center justify-center rounded-lg text-[15px] leading-none text-neutral-400 transition-colors hover:bg-neutral-100 hover:text-neutral-700"
-          >
-            ✕
-          </button>
-          <FirePanel
-            accent={accent}
-            baseline={baseline}
-            hours={hours}
-            onHours={onHours}
-            closed={closed}
-            onReopen={toggleStation}
-            result={result}
-            running={running}
-            station={station}
-          />
-        </div>
+      {/* launcher — reopens the briefing/decisions panel after it's been closed */}
+      {!panelOpen && (
+        <button
+          onClick={() => setPanelOpen(true)}
+          className="animate-fade-up absolute right-3 top-[72px] z-[1100] flex items-center gap-2 rounded-full border border-neutral-200 bg-white/95 px-3.5 py-2 text-[12.5px] font-medium text-neutral-700 shadow-[0_2px_12px_rgba(0,0,0,0.10)] backdrop-blur-sm transition-colors hover:border-neutral-300"
+        >
+          <span className="h-2 w-2 rounded-full" style={{ background: accent }} />
+          Coverage &amp; decisions
+        </button>
+      )}
+
+      {/* briefing → sandbox panel (closeable; width aligned to the composer's right-[336px] shift) */}
+      {panelOpen && (
+      <div className="animate-fade-up absolute bottom-3 right-3 top-[72px] z-[1100] w-[320px]">
+        <button
+          onClick={() => {
+            resetBoard();
+            setPanelOpen(false);
+          }}
+          title="Close panel"
+          className="absolute right-2 top-2 z-[1101] flex h-7 w-7 items-center justify-center rounded-lg text-[15px] leading-none text-neutral-400 transition-colors hover:bg-neutral-100 hover:text-neutral-700"
+        >
+          ✕
+        </button>
+        <AmbulancePanel
+          accent={accent}
+          baseline={baseline}
+          hours={hours}
+          onHours={onHours}
+          closed={closed}
+          onReopen={toggleStation}
+          result={result}
+          running={running}
+          station={station}
+          coverage={coverage}
+          category={category}
+          covHour={covHour}
+          onCoverage={onCoverage}
+          showHeat={showHeat}
+          onShowHeat={setShowHeat}
+          colocate={colocate}
+          onColocate={onColocate}
+          hospitals={hospitals}
+          posture={posture}
+          postureBusy={postureBusy}
+          onRunPlaybook={runPlaybook}
+          onClearPosture={clearPosture}
+        />
+      </div>
       )}
     </div>
   );
@@ -683,4 +899,4 @@ function Subtitle({ seg, accent }: { seg: { text: string; dur: number; t0: numbe
   );
 }
 
-export default FireMap;
+export default AmbulanceMap;

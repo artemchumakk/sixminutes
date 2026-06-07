@@ -2,11 +2,13 @@ import { useCallback, useEffect, useRef, useState } from "react";
 import type { ChatMessage, Workspace } from "../../lib/types";
 import { agentReply, SUGGESTIONS } from "../../lib/mock";
 import { transcribeVoice } from "../../lib/api";
+import { defaultFolderName } from "../../lib/workspaces";
 import { cx } from "../ui/primitives";
 import Composer from "./Composer";
 import ResultCard from "./ResultCard";
 import { RecordingBar, SpeakingOrb } from "./VoiceMode";
 import FireMap, { type FireMapHandle, type FireMsg } from "../fire/FireMap";
+import AmbulanceMap from "../ambulance/AmbulanceMap";
 
 let idc = 0;
 const nid = () => `m${++idc}`;
@@ -25,8 +27,8 @@ export default function Chat({
   const [messages, setMessages] = useState<ChatMessage[]>([]);
   const [input, setInput] = useState("");
   const [busy, setBusy] = useState(false);
-  const [folders, setFolders] = useState<string[]>(["London Bridge Hospital"]);
-  const [activeFolder, setActiveFolder] = useState("London Bridge Hospital");
+  const [folders, setFolders] = useState<string[]>([defaultFolderName(ws.id)]);
+  const [activeFolder, setActiveFolder] = useState(defaultFolderName(ws.id));
   const [fireAnalysing, setFireAnalysing] = useState(false);
   const [fireBusy, setFireBusy] = useState(false);
   const [fireMsgs, setFireMsgs] = useState<FireMsg[]>([]);
@@ -37,9 +39,11 @@ export default function Chat({
     fireScrollRef.current?.scrollTo({ top: fireScrollRef.current.scrollHeight, behavior: "smooth" });
   }, [fireMsgs]);
 
+  const mapWs = ws.id === "fire" || ws.id === "ambulance";
+
   useEffect(() => {
-    if (ws.id === "fire") onRegisterAsk?.((t) => fireRef.current?.ask(t));
-  }, [ws.id, onRegisterAsk]);
+    if (mapWs) onRegisterAsk?.((t) => fireRef.current?.ask(t));
+  }, [mapWs, onRegisterAsk]);
 
   const [fireAudioPlaying, setFireAudioPlaying] = useState(false);
   const handleVoiceText = useCallback((text: string) => {
@@ -107,8 +111,8 @@ export default function Chat({
     />
   );
 
-  // ---- voice mode (PREVIEW for ElevenLabs) — fire has the real one below ----
-  if (voiceActive && ws.id !== "fire") {
+  // ---- voice mode (PREVIEW for ElevenLabs) — map workspaces use the real one below ----
+  if (voiceActive && !mapWs) {
     return (
       <div className="flex h-full flex-col">
         <div className="flex flex-1 items-center justify-center px-4">
@@ -123,9 +127,9 @@ export default function Chat({
     );
   }
 
-  // ---- fire workspace: full-bleed twin; composer floats over the map ----
+  // ---- map workspaces (fire + ambulance): full-bleed twin; composer floats over the map ----
   // (composer component itself untouched, per migration plan)
-  if (ws.id === "fire") {
+  if (mapWs) {
     // transcript renders INSIDE the bar (Composer header slot): one element, growing
     const transcript =
       fireMsgs.length > 0 ? (
@@ -190,20 +194,29 @@ export default function Chat({
         onAddFolder={addFolder}
         header={transcript}
         hideAttach
-        hideFolder
-        staticModel
       />
     );
     return (
       <div className="relative h-full w-full">
-        <FireMap
-          ref={fireRef}
-          accent={ws.accent}
-          onAnalysingChange={setFireAnalysing}
-          onBusyChange={setFireBusy}
-          onMessagesChange={setFireMsgs}
-          onAudioStateChange={setFireAudioPlaying}
-        />
+        {ws.id === "ambulance" ? (
+          <AmbulanceMap
+            ref={fireRef}
+            accent={ws.accent}
+            onAnalysingChange={setFireAnalysing}
+            onBusyChange={setFireBusy}
+            onMessagesChange={setFireMsgs}
+            onAudioStateChange={setFireAudioPlaying}
+          />
+        ) : (
+          <FireMap
+            ref={fireRef}
+            accent={ws.accent}
+            onAnalysingChange={setFireAnalysing}
+            onBusyChange={setFireBusy}
+            onMessagesChange={setFireMsgs}
+            onAudioStateChange={setFireAudioPlaying}
+          />
+        )}
         <div
           className={
             "pointer-events-none absolute bottom-4 left-0 z-[1100] px-4 transition-[right] duration-300 " +

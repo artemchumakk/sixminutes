@@ -64,6 +64,10 @@ body {
   from { opacity: 0; transform: translateY(6px); }
   to { opacity: 1; transform: translateY(0); }
 }
+@keyframes slide-in-right {
+  from { opacity: 0; transform: translateX(48px); }
+  to { opacity: 1; transform: translateX(0); }
+}
 @keyframes orb-breathe {
   0%, 100% { transform: scale(1); }
   50% { transform: scale(1.06); }
@@ -74,6 +78,7 @@ body {
 }
 
 .animate-fade-up { animation: fade-up 0.25s ease both; }
+.animate-slide-in-right { animation: slide-in-right 0.32s cubic-bezier(0.22, 1, 0.36, 1) both; }
 .caret::after {
   content: "▍";
   margin-left: 1px;
