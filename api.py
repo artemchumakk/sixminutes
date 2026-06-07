@@ -273,9 +273,10 @@ def scenario(s: Scenario) -> dict:
 
 
 class Cover(BaseModel):
-    stripped: list[str]                                   # stations with pumps committed
+    stripped: list[str]                                   # stations with engines committed
     hours: list[int] | None = Field(default=None, min_length=2, max_length=2)
     donors: int = Field(default=20, ge=4, le=40)          # nearest-N candidate donors
+    window_hours: int = Field(default=4, ge=1, le=24)     # tactical horizon for framing
     sample: int = Field(default=DEFAULT_SAMPLE, ge=5_000, le=140_000)
 
 
@@ -306,18 +307,29 @@ def cover(c: Cover) -> dict:
     d2 = (w.SE - w.SE[ti]) ** 2 + (w.SN - w.SN[ti]) ** 2
     order = [w.names[i] for i in d2.argsort() if w.names[i] not in c.stripped][:c.donors]
 
+    # tactical framing: a cover move lives for HOURS, not years. Expectation per
+    # window = annual total in this hour-band / ~365 window-occurrences.
+    scale = WINDOW_N / c.sample
+    band_h = ((hours[1] - hours[0]) % 24) if hours else 24
+    windows_per_day = max(1.0, band_h / c.window_hours) if hours else 24 / c.window_hours
+    per_window = lambda sample_count: sample_count * scale / (365 * windows_per_day)  # noqa: E731
+
+    hole = (base["station"] == c.stripped[0]).to_numpy()   # the uncovered ground
     moves = []
     for donor in order:
         delta = dict(strip_delta)
         delta[donor] = delta.get(donor, 0) - 1
-        delta[tgt] = delta.get(tgt, 0) + 1          # donor pump relocates into the empty house
+        delta[tgt] = delta.get(tgt, 0) + 1          # donor engine relocates into the empty house
         run = sim.simulate(w, sim.Posture(pump_delta=delta),
                            latest_months=WINDOW_MONTHS, sample=c.sample,
                            seed=14, p_unavail=P_UNAVAIL, hours=hours)
         m_pushed = int(((run["sim_s"] > 360) & (base["sim_s"] <= 360)).sum())
+        hole_improve = float((stripped_run["sim_s"].to_numpy()[hole] - run["sim_s"].to_numpy()[hole]).mean()) if hole.any() else 0.0
         moves.append({"from": donor, "to": tgt,
                       "pushed_with_move": m_pushed,
-                      "promise_breaks_avoided": s_pushed - m_pushed})
+                      "promise_breaks_avoided": s_pushed - m_pushed,
+                      "hole_response_improvement_s": round(hole_improve, 1),
+                      "expected_breaches_avoided_window": round(per_window(s_pushed - m_pushed), 2)})
     moves.sort(key=lambda m: -m["promise_breaks_avoided"])
 
     worst = (stripped_run.with_columns(d=stripped_run["sim_s"] - base["sim_s"])
@@ -326,6 +338,7 @@ def cover(c: Cover) -> dict:
     return {
         "stripped": c.stripped,
         "hours": c.hours,
+        "window_hours": c.window_hours,
         "elapsed_s": round(time.time() - t0, 1),
         "scale": round(WINDOW_N / c.sample, 3),
         "uncovered": {"pushed_past_6min": s_pushed,

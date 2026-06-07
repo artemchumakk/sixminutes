@@ -31,21 +31,21 @@ const INITIAL_WORKSPACES: WorkspaceFolderData[] = [
   },
 ];
 
-// fire workspace: the warden's board, grouped by time horizon — click your
-// station on the map first and "my ground / my pumps" resolve to it
+// fire workspace: the warden's board, grouped by time horizon — pick "my
+// station" above and "my ground / my engines" resolve to it
 const FIRE_ANALYSES: { group: string; items: { title: string; hint: string; ask: string }[] }[] = [
   {
     group: "Right now",
     items: [
       {
         title: "Who covers my ground?",
-        hint: "your pumps just committed",
-        ask: "My pumps just committed — who covers my ground?",
+        hint: "your engines just committed",
+        ask: "My engines just committed — who covers my ground for the next few hours?",
       },
       {
         title: "Best cover move",
-        hint: "six pumps gone from my patch",
-        ask: "A big job takes six pumps from my patch — knock-on and best cover?",
+        hint: "six engines gone from my patch",
+        ask: "A big job takes six engines from my patch — knock-on and best cover move right now?",
       },
     ],
   },

@@ -140,7 +140,7 @@ const FireMap = forwardRef<
     requestAnimationFrame(step);
   }, []);
 
-  // animated pump relocation: progressive arc + traveling dot + arrival pulse
+  // animated engine relocation: progressive arc + traveling dot + arrival pulse
   const animateMove = useCallback(
     (fromName: string, toName: string) => {
       const map = mapRef.current;

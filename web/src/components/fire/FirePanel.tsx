@@ -251,7 +251,7 @@ export default function FirePanel({
       {station && (
         <Section title="Station inspector">
           <div className="mb-1 text-[14px] font-medium text-neutral-900">{station.name}</div>
-          <Row label="pumps" base={String(station.pumps)} />
+          <Row label="engines" base={String(station.pumps)} />
           <Row label="calls carried" base={`~${station.calls_carried_per_yr.toLocaleString()}/yr`} />
           {station.nearest_cover?.length > 0 && (
             <Row

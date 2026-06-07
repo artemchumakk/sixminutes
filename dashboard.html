@@ -147,7 +147,7 @@ const norm = s => (s||"").toUpperCase().replace(/&/g,"AND").replace(/[.'’]/g,"
 fetch(API+"/stations").then(r=>r.json()).then(st=>{
   st.forEach(s=>{
     const m = L.circleMarker([s.lat,s.lon],{pane:"stns",radius:4+1.7*s.pumps,weight:1.5,color:"#46c2ff",fillColor:"#46c2ff",fillOpacity:.55}).addTo(map);
-    m.bindTooltip(`${s.name} · ${s.pumps} pump${s.pumps>1?"s":""}`,{className:"stn-tip"});
+    m.bindTooltip(`${s.name} · ${s.pumps} engine${s.pumps>1?"s":""}`,{className:"stn-tip"});
     m.on("click",()=>{ closed.has(s.name)?closed.delete(s.name):closed.add(s.name); paint(); });
     stations[s.name]=m;
   });
