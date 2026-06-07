@@ -47,7 +47,9 @@ ElevenLabs voice in/out that operates the simulator AND the dashboard itself by
 conversation (the Ghost Operator: ask it something and the wall choreographs),
 runs SQL over the full archive, and patrols autonomously with a structured event
 memory — investigating anomalies and running unprompted counterfactual experiments.
-[SUNDAY: insert live session stats — start time, hours logged, event count]
+Latest session (Sun 00:58–02:22 UTC, 1h24m continuous): 318 logged events — 207 narrated
+notables, 14 unprompted counterfactual experiments, 9 self-directed SQL investigations,
+8 chapter summaries across 69 replayed days of London.
 
 ## NVIDIA / Spark story (form field)
 
@@ -63,8 +65,11 @@ anywhere in the path.
 
 ## Bounty (ElevenLabs / Nemotron)
 
-Brigade Watch: Nemotron agent, ElevenLabs STT+TTS both directions, persistent session logs (logs/session_*.jsonl + audio artifacts) — [SUNDAY: real stats],
-structured anomaly registry → exact recall of any earlier minute on live questioning.
+Brigade Watch: Nemotron agent, ElevenLabs STT+TTS both directions, persistent session
+logs — two overnight sessions: Sat on the DGX Spark (2,250 log lines, logs_box_backup/)
++ Sun 1h23m58s continuous on workstation (318 events, logs/session_overnight_sun.jsonl;
+3,053 TTS characters), structured anomaly registry → exact recall of any earlier minute
+on live questioning.
 
 ## Run it
 

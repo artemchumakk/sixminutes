@@ -4,10 +4,20 @@
 
 ## TL;DR
 
-- **Product: flawless.** Battery 22/22 green, adversarial retest 6/6, all fixes pushed.
-- **Bounty patrol: [PENDING — filled at ~03:30]**
+- **Product: flawless.** Battery 22/22 green ×2 (incl. final post-patrol run), adversarial retest 6/6, judge drill 6/6 in 110s, all fixes pushed.
+- **Bounty patrol: DONE — 1h 23m 58s continuous voice session, 318 logged events.**
 - **Spark: froze ~01:45 during the 120B Triton warmup — needs the power button at 08:00.** Runtime stayed on Nebius (same Super-120B, 1–2s/turn). 15-min rebuild recipe below.
-- Web app (5173), API (8095), wall — all running and verified.
+- Web app (5173), API (8095), wall — all running, verified 02:31Z.
+
+## 🎬 Judge drill (stopwatched, full demo arc = 110s)
+| Beat | Time | Answer headline |
+|---|---|---|
+| Why trust this? | 4.0s | 2.3M records, held-out validation |
+| Close Soho tonight | 13.5s | +2.8s mean, ~830 breaches/yr, full choreography |
+| Cover my ground (My Station) | 33.4s | Stoke Newington → Islington, 86s faster, ~1 breach/4h — **narrate-first covers the sweep wait** |
+| The 2014 mistake | 40.6s | 4,068 extra breaches/yr — ghosts + compare strip fill the wait |
+| Rank irreplaceable | 10.4s | Addington +202s, Biggin Hill +195s |
+| Crying-wolf buildings | 8.2s | top sites £182k/£158k/£112k (UPRN-0 bug found & fixed here) |
 
 ## What happened overnight
 
@@ -71,21 +81,24 @@ ssh spark 'loginctl enable-linger nvidia; tmux new -d -s super120 "export PATH=$
 # fallback if it fails again: bash ~/restore_nano.sh && bash ~/serve_supervisor.sh
 ```
 
-## Services state (as of [MORNING: time])
+## Services state (verified 02:31Z)
 | Service | State |
 |---|---|
-| API :8095 | [MORNING] |
-| Web :5173 | [MORNING] |
-| Wall (8095/) | [MORNING] |
-| Patrol | [MORNING: evidence below] |
-| Spark | down, awaiting power button |
+| API :8095 | ✅ 200, restarted post-fixes via run_api.sh (keys loaded) |
+| Web :5173 | ✅ 200 (Vite dev; prod build also passes) |
+| Wall (8095/) | ✅ serving, WARDEN branding |
+| Patrol | ✅ completed + evidence captured (below); supervisor cleanly stopped |
+| Spark | ❌ down, awaiting 08:00 power button (recipe above) |
 
 ## 🏆 Bounty evidence (ElevenLabs)
-- Session start: [PATROL: start UTC]
-- Session stop: [PATROL: stop UTC] → duration [PATROL: duration]
-- EL characters consumed: [PATROL: before] → [PATROL: after] (Δ [PATROL: delta])
-- Log: `logs/patrol.log` (+ snapshot `/tmp/patrol_evidence.log`)
-- Session memory events: [PATROL: event counts by kind]
+- Session: **2026-06-07 00:58:25Z → 02:22:23Z = 1h 23m 58s** (target 1h11m + 13min buffer)
+- **318 logged events**: 207 notables narrated · 69 sim-days replayed · **14 autonomous
+  twin experiments** · **9 LLM investigations** · 8 chapter summaries · 10 seeded analyses
+- ElevenLabs characters: 21,744 → 24,797 (**Δ 3,053** TTS chars this session)
+- Evidence in repo: `logs/session_overnight_sun.jsonl` (318 rows, wall-clock timestamps)
+  + `logs/memory.db` + Saturday's box session (`logs_box_backup/`, 2,250 lines)
+- Cumulative story: TWO overnight sessions (Sat on the Spark, Sun on the Mac after the
+  Spark froze) — resilience is part of the narrative
 
 ## Next (SUNDAY.md sequence)
 08:00 box power-cycle + rebuild → 08:30 judge drill + WiFi-off drill →
